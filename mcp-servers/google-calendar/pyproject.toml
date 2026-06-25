@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chronai-mcp-google-calendar"
+version = "0.1.0"
+description = "ChronAI MCP server for Google Calendar integration"
+requires-python = ">=3.9"
+dependencies = [
+    "mcp>=1.0.0",
+    "google-auth>=2.35.0",
+    "google-api-python-client>=2.150.0",
+]
+
+[project.scripts]
+chronai-calendar = "server:main"

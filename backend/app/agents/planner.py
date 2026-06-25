@@ -1,0 +1,162 @@
+"""Planner Agent - Task decomposition and management.
+
+Breaks user goals into subtasks with deadlines using Gemini,
+and manages tasks through the Google Tasks MCP server.
+"""
+
+import json
+from typing import Any
+
+from google import genai
+
+from app.agents.base import AgentBase
+from app.config import settings
+
+
+PLANNER_PROMPT = """You are a task planning specialist. Your job is to:
+1. Break down user goals into actionable subtasks
+2. Assign reasonable deadlines based on complexity
+3. Prioritize tasks logically
+
+When given a goal, respond with a JSON object:
+{
+  "plan_summary": "brief description of the plan",
+  "tasks": [
+    {
+      "title": "task title",
+      "notes": "additional details or instructions",
+      "due_days_from_now": number_of_days,
+      "priority": "high|medium|low"
+    }
+  ],
+  "response": "A natural language summary to share with the user"
+}
+
+Be specific and actionable. Each task should be completable in one sitting.
+"""
+
+
+class PlannerAgent(AgentBase):
+    """Planner agent that decomposes goals into tasks.
+
+    Uses Gemini for intelligent task decomposition and the Google Tasks
+    MCP server for task CRUD operations.
+    """
+
+    name = "planner"
+    description = "Breaks goals into subtasks with deadlines"
+    capabilities = ["task_decomposition", "task_creation", "task_listing"]
+
+    def __init__(self, mcp_client: Any = None):
+        """Initialize the planner with Gemini client.
+
+        Args:
+            mcp_client: Optional MCP client for tool access.
+        """
+        super().__init__(mcp_client)
+        self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        self.model = "gemini-2.5-flash"
+
+    async def execute(self, task: dict) -> dict:
+        """Break down a goal into subtasks and optionally create them.
+
+        Args:
+            task: Dict with 'message' (the goal or instruction),
+                  'auth_token' for Google API access.
+
+        Returns:
+            Dict with 'content' (plan description), 'agent' name,
+            and 'tasks' (list of created/planned tasks).
+        """
+        message = task.get("message", "")
+        auth_token = task.get("auth_token", "")
+
+        # Use Gemini to decompose the goal
+        plan = await self._decompose_goal(message)
+
+        # If MCP client is available, create tasks
+        created_tasks = []
+        if self.mcp_client and auth_token and plan.get("tasks"):
+            for task_item in plan["tasks"]:
+                try:
+                    result = await self.call_mcp_tool(
+                        "google-tasks",
+                        "create_task",
+                        {
+                            "title": task_item["title"],
+                            "notes": task_item.get("notes", ""),
+                            "due_days_from_now": task_item.get("due_days_from_now", 7),
+                            "auth_token": auth_token,
+                        },
+                    )
+                    created_tasks.append(result)
+                except Exception:
+                    # Continue with other tasks even if one fails
+                    pass
+
+        response_content = plan.get(
+            "response", plan.get("plan_summary", "Plan created.")
+        )
+
+        if created_tasks:
+            response_content += f"\n\nI've created {len(created_tasks)} task(s) in your Google Tasks."
+
+        return {
+            "content": response_content,
+            "agent": self.name,
+            "tasks": plan.get("tasks", []),
+            "created_count": len(created_tasks),
+        }
+
+    async def _decompose_goal(self, goal: str) -> dict:
+        """Use Gemini to break a goal into subtasks.
+
+        Args:
+            goal: The user's goal or objective to decompose.
+
+        Returns:
+            Plan dictionary with tasks, summary, and response.
+        """
+        try:
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=f"Break this goal into actionable tasks: {goal}",
+                config={
+                    "system_instruction": PLANNER_PROMPT,
+                    "response_mime_type": "application/json",
+                },
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            return {
+                "plan_summary": "Unable to create detailed plan",
+                "tasks": [
+                    {
+                        "title": goal,
+                        "notes": "Original goal - needs manual breakdown",
+                        "due_days_from_now": 7,
+                        "priority": "medium",
+                    }
+                ],
+                "response": f"I'll help you plan '{goal}'. Let me create a task for this.",
+            }
+
+    async def list_tasks(self, auth_token: str) -> list[dict]:
+        """List all tasks from Google Tasks.
+
+        Args:
+            auth_token: Google OAuth token for API access.
+
+        Returns:
+            List of task dictionaries.
+        """
+        if not self.mcp_client:
+            return []
+
+        try:
+            result = await self.call_mcp_tool(
+                "google-tasks", "list_tasks", {"auth_token": auth_token}
+            )
+            return result if isinstance(result, list) else []
+        except Exception:
+            return []

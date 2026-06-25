@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Create the complete Python FastAPI backend with WebSocket chat, Google Gemini-powered AI agents (orchestrator, planner, scheduler, notification, voice), MCP client, and OAuth middleware. Also create both MCP servers (google-calendar, google-tasks) as standalone Python packages, shared types, docker-compose.yml, and root config files.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Create backend/requirements.txt with: fastapi, uvicorn[standard], websockets, google-genai, google-auth, google-api-python-client, mcp, pydantic, python-dotenv, httpx",
     "Create backend/app/__init__.py (empty)",
