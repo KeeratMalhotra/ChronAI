@@ -30,6 +30,7 @@ services:
     environment:
       - MCP_CALENDAR_PATH=/mcp-servers/google-calendar/server.py
       - MCP_TASKS_PATH=/mcp-servers/google-tasks/server.py
+      - MCP_GMAIL_PATH=/mcp-servers/google-gmail/server.py
     volumes:
       - ./backend:/app
       - ./mcp-servers:/mcp-servers

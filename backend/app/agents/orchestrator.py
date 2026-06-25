@@ -22,6 +22,7 @@ Available agents:
 - scheduler: Finds optimal time slots, manages calendar events
 - notification: Generates reminders and proactive suggestions
 - voice: Converts text to speech
+- email: Drafts meeting follow-ups, summarizes unread emails, sends reminders on behalf of user
 
 Respond with a JSON object:
 {

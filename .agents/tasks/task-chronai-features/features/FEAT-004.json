@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Gmail MCP Server + Email Agent - New MCP server for Gmail with 5 tools (list_emails, read_email, send_email, draft_email, search_emails), plus an Email Agent that integrates with the orchestrator.",
+  "status": "in_progress",
+  "steps": [
+    "Create mcp-servers/google-gmail/ directory.",
+    "Create mcp-servers/google-gmail/pyproject.toml following the pattern from google-calendar/pyproject.toml but named 'chronai-mcp-google-gmail' with dependencies: mcp>=1.0.0, google-auth>=2.35.0, google-api-python-client>=2.150.0.",
+    "Create mcp-servers/google-gmail/server.py: Gmail MCP server with Server('google-gmail'). Implement 5 tools: list_emails (list recent emails with optional filters like max_results, label, query), read_email (read a specific email by ID, return subject/from/to/body), send_email (send email with to/subject/body), draft_email (create a draft with to/subject/body), search_emails (search with Gmail query syntax string). Use Google Gmail API via OAuth token passthrough (same pattern as calendar/tasks servers using Credentials(token=auth_token) and build('gmail', 'v1', credentials=credentials)).",
+    "Update backend/app/config.py to add MCP_GMAIL_PATH: str = '../mcp-servers/google-gmail/server.py' (if not already added in FEAT-001).",
+    "Create backend/app/agents/email.py: EmailAgent inheriting from AgentBase. name='email', description='Manages email operations including drafting, summarizing, and sending'. capabilities=['draft_email', 'summarize_emails', 'send_email', 'search_emails']. Has a Gemini client for generating email content. execute() method handles instructions like 'draft meeting follow-up', 'summarize unread emails', 'send reminder to X'. Uses MCP gmail tools.",
+    "Update backend/app/main.py: Import EmailAgent, register it in lifespan, connect to google-gmail MCP server using settings.MCP_GMAIL_PATH.",
+    "Update backend/app/agents/orchestrator.py SYSTEM_PROMPT to include the email agent: '- email: Drafts meeting follow-ups, summarizes unread emails, sends reminders on behalf of user'.",
+    "Update docker-compose.yml backend environment to add MCP_GMAIL_PATH=/mcp-servers/google-gmail/server.py."
+  ],
+  "acceptance_criteria": [
+    "mcp-servers/google-gmail/server.py exists with 5 Gmail tools (list_emails, read_email, send_email, draft_email, search_emails)",
+    "mcp-servers/google-gmail/pyproject.toml exists with correct metadata and dependencies",
+    "backend/app/agents/email.py exists with EmailAgent registered in AgentRegistry",
+    "Orchestrator SYSTEM_PROMPT includes the email agent",
+    "backend/app/main.py registers EmailAgent and connects to gmail MCP server",
+    "docker-compose.yml includes MCP_GMAIL_PATH env var",
+    "Python imports work: python -c 'from app.agents.email import EmailAgent'"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/backend && python -c 'from app.agents.email import EmailAgent; print(\"EmailAgent OK\")'",
+    "cd /projects/sandbox/ChronAI/backend && python -c 'from app.main import app; print(\"App with email agent OK\")'",
+    "cd /projects/sandbox/ChronAI && python -c 'import sys; sys.path.insert(0, \"mcp-servers/google-gmail\"); import server; print(\"Gmail MCP server imports OK\")'"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

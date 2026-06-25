@@ -15,6 +15,7 @@ from app.agents.planner import PlannerAgent
 from app.agents.scheduler import SchedulerAgent
 from app.agents.notification import NotificationAgent
 from app.agents.voice import VoiceAgent
+from app.agents.email import EmailAgent
 from app.auth import verify_google_token
 from app.config import settings
 from app.db.firestore import init_firestore
@@ -74,12 +75,22 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+    try:
+        await mcp_client.connect_server(
+            name="google-gmail",
+            command="python",
+            args=[settings.MCP_GMAIL_PATH],
+        )
+    except Exception:
+        pass
+
     # Register agents
     OrchestratorAgent(mcp_client=mcp_client)
     PlannerAgent(mcp_client=mcp_client)
     SchedulerAgent(mcp_client=mcp_client)
     NotificationAgent(mcp_client=mcp_client)
     VoiceAgent(mcp_client=mcp_client)
+    EmailAgent(mcp_client=mcp_client)
 
     # Start proactive scheduler
     _scheduler_task = start_proactive_scheduler(connection_manager)
