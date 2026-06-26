@@ -25,6 +25,10 @@ float noise(float x) {
 void main() {
   vec3 pos = position;
   
+  // IMPORTANT: Normal reconstruction assumes torus lies in XY plane.
+  // All displacement (undulation, audio, repulsion) must happen BEFORE rotation.
+  // Moving rotation earlier would break the atan(pos.y, pos.x) normal calculation.
+  
   // Compute torus normal direction (radial from center ring)
   float angle = atan(pos.y, pos.x);
   vec2 ringCenter = vec2(cos(angle), sin(angle)) * 2.0;

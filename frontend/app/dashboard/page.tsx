@@ -57,7 +57,7 @@ export default function DashboardPage() {
         {/* Entity Area */}
         <div className="flex-1 relative">
           <EntityCanvas />
-          <HudLabels />
+          <HudLabels isActive={true} />
         </div>
 
         {/* Chat Panel Sidebar */}

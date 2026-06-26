@@ -151,7 +151,9 @@ class MCPClient:
                 f"Available tools: {list(server.tools.keys())}"
             )
 
-        logger.info(f"Calling MCP tool '{tool_name}' on server '{server_name}' with args: {arguments}")
+        # Redact sensitive fields before logging
+        safe_args = {k: ("***" if "token" in k.lower() or "secret" in k.lower() else v) for k, v in arguments.items()}
+        logger.info(f"Calling MCP tool '{tool_name}' on server '{server_name}' with args: {safe_args}")
 
         try:
             result = await asyncio.wait_for(
