@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Frontend Power Features: Command Palette (Cmd+K) and Focus Mode overlay. Create CommandPalette component using cmdk package, create FocusMode component with countdown timer, register both in dashboard page.",
+  "status": "in_progress",
+  "steps": [
+    "Create frontend/components/CommandPalette.tsx using the cmdk package (already installed v1.1.1). Implement centered modal with glass panel dark design. Keyboard trigger: Cmd+K (Mac) / Ctrl+K (Windows). Quick actions: 'Add event...' (types into chat), 'Add task...' (types into chat), 'Check in habit...' (shows habit list), 'What\\'s next?' (sends to chat), 'Weekly review' (sends to chat), 'Focus mode' (triggers focus mode), 'Open Calendar' / 'Open Habits' / 'Open Tasks' (opens respective drawer). Search filters actions as typed. Keyboard navigable. Use Framer Motion for overlay animation, lucide-react icons, TailwindCSS styling.",
+    "Create frontend/components/FocusMode.tsx - full-screen overlay with: circular countdown ring (SVG similar to habit streak concept but larger), task name display, time remaining in big font, Pause/Resume/Stop buttons, ambient gradient background. Timer options: 25/45/60/90/120 minutes (default 90). When timer ends: show completion message 'Nice work! N minutes of focused work on [task]'. Use Framer Motion for enter/exit animations.",
+    "Integrate CommandPalette into frontend/app/dashboard/page.tsx: import and render CommandPalette with props for sending chat messages (via a shared callback or state), opening drawers (pass openPanel function), and triggering focus mode. Add keyboard listener for Cmd+K/Ctrl+K.",
+    "Integrate FocusMode into frontend/app/dashboard/page.tsx: add state for focus mode (active, task name, duration). CommandPalette 'Focus mode' action triggers it. When focus mode starts from chat (backend returns focus confirmation), it should also be triggerable.",
+    "Ensure pnpm build passes with all new components properly typed and imported."
+  ],
+  "acceptance_criteria": [
+    "pnpm build succeeds with no TypeScript errors",
+    "CommandPalette component renders with Cmd+K trigger and lists all quick actions",
+    "FocusMode component renders full-screen overlay with countdown timer",
+    "Both components are integrated in the dashboard page",
+    "Focus mode can be triggered from command palette"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && pnpm build"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

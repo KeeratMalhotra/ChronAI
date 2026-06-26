@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AmbientBackground from "@/components/ui/AmbientBackground";
@@ -11,6 +11,8 @@ import CalendarDrawer from "@/components/drawers/CalendarDrawer";
 import TasksDrawer from "@/components/drawers/TasksDrawer";
 import ScheduleDrawer from "@/components/drawers/ScheduleDrawer";
 import HabitsDrawer from "@/components/drawers/HabitsDrawer";
+import CommandPalette from "@/components/CommandPalette";
+import FocusMode from "@/components/FocusMode";
 import type { ConnectionState } from "@/hooks/useChatSocket";
 import { fetchOnboardingStatus } from "@/lib/api";
 
@@ -37,6 +39,23 @@ export default function DashboardPage() {
 
   const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
+  const [focusActive, setFocusActive] = useState(false);
+  const [focusTask, setFocusTask] = useState<string | undefined>(undefined);
+
+  const sendToChatRef = useRef<((msg: string) => void) | null>(null);
+
+  const handleSendReady = useCallback((sendFn: (content: string) => void) => {
+    sendToChatRef.current = sendFn;
+  }, []);
+
+  const handleCommandSend = useCallback((message: string) => {
+    sendToChatRef.current?.(message);
+  }, []);
+
+  const handleFocusMode = useCallback(() => {
+    setFocusTask(undefined);
+    setFocusActive(true);
+  }, []);
 
   const openPanel = (key: PanelKey) =>
     setActivePanel((cur) => (cur === key ? null : key));
@@ -70,6 +89,7 @@ export default function DashboardPage() {
           accessToken={accessToken}
           userName={user?.name ?? undefined}
           onConnectionChange={setConnection}
+          onSendReady={handleSendReady}
         />
       </div>
 
@@ -86,6 +106,20 @@ export default function DashboardPage() {
       />
       <ScheduleDrawer open={activePanel === "schedule"} onClose={close} />
       <HabitsDrawer open={activePanel === "habits"} onClose={close} accessToken={accessToken} />
+
+      {/* Command Palette */}
+      <CommandPalette
+        onSendChat={handleCommandSend}
+        onOpenPanel={openPanel}
+        onFocusMode={handleFocusMode}
+      />
+
+      {/* Focus Mode overlay */}
+      <FocusMode
+        active={focusActive}
+        taskName={focusTask}
+        onStop={() => setFocusActive(false)}
+      />
     </main>
   );
 }

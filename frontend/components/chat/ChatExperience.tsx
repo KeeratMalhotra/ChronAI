@@ -12,6 +12,7 @@ interface ChatExperienceProps {
   accessToken: string;
   userName?: string;
   onConnectionChange?: (state: ConnectionState) => void;
+  onSendReady?: (sendFn: (content: string) => void) => void;
 }
 
 /**
@@ -25,6 +26,7 @@ export default function ChatExperience({
   accessToken,
   userName,
   onConnectionChange,
+  onSendReady,
 }: ChatExperienceProps) {
   const {
     messages,
@@ -41,6 +43,10 @@ export default function ChatExperience({
   useEffect(() => {
     onConnectionChange?.(connection);
   }, [connection, onConnectionChange]);
+
+  useEffect(() => {
+    onSendReady?.((content: string) => send(content, "chat"));
+  }, [send, onSendReady]);
 
   return (
     <div className="relative z-10 flex h-full w-full flex-col">
