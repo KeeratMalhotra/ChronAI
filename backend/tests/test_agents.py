@@ -593,3 +593,371 @@ class TestOrchestratorStatusCallback:
         assert statuses[0]["content"]  # non-empty friendly text
         # Single agent -> returned verbatim (no consolidation Gemini call).
         assert result["content"] == "Your calendar is clear this week!"
+
+
+class TestPriorityAgent:
+    """Tests for the PriorityAgent."""
+
+    @pytest.fixture(autouse=True)
+    def setup_priority(self, mock_vertexai_model, mock_mcp_client):
+        """Set up the priority agent with mocked dependencies."""
+        from app.agents.base import AgentRegistry
+
+        AgentRegistry._agents.clear()
+
+        with patch("app.agents.priority.vertexai.init"), \
+             patch("app.agents.priority.GenerativeModel", return_value=mock_vertexai_model):
+            from app.agents.priority import PriorityAgent
+
+            self.agent = PriorityAgent(mcp_client=mock_mcp_client)
+            self.mock_model = mock_vertexai_model
+            self.mock_mcp = mock_mcp_client
+            yield
+            AgentRegistry._agents.clear()
+
+    async def test_priority_ranking_order(self):
+        """Test PriorityAgent ranks tasks by urgency with correct emoji indicators."""
+        # Mock MCP to return tasks and events
+        self.mock_mcp.call_tool = AsyncMock(side_effect=[
+            # First call: list_tasks
+            [
+                {"id": "1", "title": "Finish report", "due": "2024-01-15T15:00:00Z"},
+                {"id": "2", "title": "Prepare slides", "due": "2024-01-16T00:00:00Z"},
+                {"id": "3", "title": "Call dentist", "due": ""},
+            ],
+            # Second call: list_events
+            [
+                {"id": "e1", "summary": "Team standup", "start": "2024-01-15T10:00:00Z"},
+            ],
+        ])
+
+        # Mock Gemini to return ranked priorities
+        priority_response = {
+            "priorities": [
+                {"title": "Finish report", "urgency": "high", "reason": "due in 3 hours"},
+                {"title": "Prepare slides", "urgency": "medium", "reason": "due tomorrow"},
+                {"title": "Call dentist", "urgency": "low", "reason": "no deadline"},
+            ],
+            "summary": "Here's what matters most right now:",
+        }
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps(priority_response)
+        )
+
+        result = await self.agent.execute({
+            "message": "what should I focus on?",
+            "auth_token": "test-token",
+            "user_id": "user123",
+        })
+
+        assert result["agent"] == "priority"
+        assert result["action"] == "prioritize"
+        assert len(result["priorities"]) == 3
+        # Check ordering: high first, low last
+        assert result["priorities"][0]["urgency"] == "high"
+        assert result["priorities"][2]["urgency"] == "low"
+        # Check content has emoji indicators
+        assert "\U0001f534" in result["content"]  # red circle for high
+        assert "\U0001f7e2" in result["content"]  # green circle for low
+        assert "Finish report" in result["content"]
+
+    async def test_priority_empty_state(self):
+        """Test PriorityAgent handles no tasks gracefully."""
+        # Mock MCP to return empty lists
+        self.mock_mcp.call_tool = AsyncMock(return_value=[])
+
+        # Mock Gemini returning empty priorities
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps({
+                "priorities": [],
+                "summary": "Nothing urgent right now!",
+            })
+        )
+
+        result = await self.agent.execute({
+            "message": "prioritize my tasks",
+            "auth_token": "test-token",
+            "user_id": "user123",
+        })
+
+        assert result["agent"] == "priority"
+        assert "all clear" in result["content"].lower() or "no pressing" in result["content"].lower()
+        assert result["priorities"] == []
+
+    async def test_priority_fallback_without_gemini(self):
+        """Test PriorityAgent falls back gracefully when Gemini returns invalid JSON."""
+        self.mock_mcp.call_tool = AsyncMock(side_effect=[
+            [{"id": "1", "title": "Task A", "due": ""}],
+            [],
+        ])
+
+        # Gemini returns invalid JSON
+        self.mock_model.generate_content.return_value = MagicMock(text="not json")
+
+        result = await self.agent.execute({
+            "message": "what's most important?",
+            "auth_token": "test-token",
+            "user_id": "user123",
+        })
+
+        # Should still return a valid response using fallback
+        assert result["agent"] == "priority"
+        assert result["priorities"] is not None
+
+
+class TestSmartScheduling:
+    """Tests for the scheduler's smart time suggestion feature."""
+
+    @pytest.fixture(autouse=True)
+    def setup_scheduler(self, mock_vertexai_model, mock_mcp_client):
+        """Set up the scheduler agent with mocked dependencies."""
+        from app.agents.base import AgentRegistry
+
+        AgentRegistry._agents.clear()
+
+        with patch("app.agents.scheduler.vertexai.init"), \
+             patch("app.agents.scheduler.GenerativeModel", return_value=mock_vertexai_model):
+            from app.agents.scheduler import SchedulerAgent
+
+            self.agent = SchedulerAgent(mcp_client=mock_mcp_client)
+            self.mock_model = mock_vertexai_model
+            self.mock_mcp = mock_mcp_client
+            yield
+            AgentRegistry._agents.clear()
+
+    async def test_suggest_time_prefers_morning(self):
+        """Test that suggest_time picks morning slots for focus work."""
+        # Gemini classifies as suggest_time
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps({
+                "action": "suggest_time",
+                "event_details": {
+                    "summary": "Deep work",
+                    "duration_minutes": 120,
+                    "preferred_time": "morning",
+                },
+                "response": "Let me find time for deep work.",
+            })
+        )
+
+        # Mock MCP to return free slots at various times
+        self.mock_mcp.call_tool.return_value = [
+            {"start": "2024-01-16T09:00:00+05:30", "duration_minutes": 120},
+            {"start": "2024-01-16T14:00:00+05:30", "duration_minutes": 120},
+            {"start": "2024-01-16T17:00:00+05:30", "duration_minutes": 120},
+        ]
+
+        result = await self.agent.execute({
+            "message": "Find me 2 hours for deep work",
+            "auth_token": "test-token",
+        })
+
+        assert result["agent"] == "scheduler"
+        assert result["action"] == "suggest_time"
+        # Should suggest the morning slot and ask for confirmation
+        assert "9:00" in result["content"] or "9:" in result["content"]
+        assert "block" in result["content"].lower() or "want" in result["content"].lower()
+        # Should have a pending action for confirmation
+        assert result.get("pending_action") is not None
+        assert result["pending_action"]["awaiting"] == "confirmation"
+
+    async def test_suggest_time_no_slots_available(self):
+        """Test suggest_time handles no free slots gracefully."""
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps({
+                "action": "suggest_time",
+                "event_details": {
+                    "summary": "Meeting prep",
+                    "duration_minutes": 60,
+                    "preferred_time": "any",
+                },
+                "response": "Looking for time.",
+            })
+        )
+
+        # No free slots
+        self.mock_mcp.call_tool.return_value = []
+
+        result = await self.agent.execute({
+            "message": "When should I work on the presentation?",
+            "auth_token": "test-token",
+        })
+
+        assert result["agent"] == "scheduler"
+        assert "couldn't find" in result["content"].lower() or "widen" in result["content"].lower()
+
+
+class TestFocusSession:
+    """Tests for the scheduler's focus session feature."""
+
+    @pytest.fixture(autouse=True)
+    def setup_scheduler(self, mock_vertexai_model, mock_mcp_client):
+        """Set up the scheduler agent with mocked dependencies."""
+        from app.agents.base import AgentRegistry
+
+        AgentRegistry._agents.clear()
+
+        with patch("app.agents.scheduler.vertexai.init"), \
+             patch("app.agents.scheduler.GenerativeModel", return_value=mock_vertexai_model):
+            from app.agents.scheduler import SchedulerAgent
+
+            self.agent = SchedulerAgent(mcp_client=mock_mcp_client)
+            self.mock_model = mock_vertexai_model
+            self.mock_mcp = mock_mcp_client
+            yield
+            AgentRegistry._agents.clear()
+
+    async def test_focus_session_creates_calendar_block(self):
+        """Test that focus session creates a calendar event."""
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps({
+                "action": "focus_session",
+                "event_details": {
+                    "summary": "Focus: presentation",
+                    "duration_minutes": 90,
+                },
+                "response": "Starting a 90-minute focus session.",
+            })
+        )
+
+        # Mock MCP create_event success
+        self.mock_mcp.call_tool.return_value = {
+            "id": "event_focus_1",
+            "summary": "Focus: presentation",
+            "start": "2024-01-15T10:00:00+05:30",
+        }
+
+        result = await self.agent.execute({
+            "message": "Start a focus session for 90 minutes on the presentation",
+            "auth_token": "test-token",
+            "user_id": "user123",
+        })
+
+        assert result["agent"] == "scheduler"
+        assert result["action"] == "focus_session"
+        assert "focus" in result["content"].lower()
+        assert "90 minutes" in result["content"]
+        # Verify MCP was called to create the event
+        self.mock_mcp.call_tool.assert_called()
+        create_calls = [
+            c for c in self.mock_mcp.call_tool.call_args_list
+            if c[0][1] == "create_event"
+        ]
+        assert len(create_calls) == 1
+        tool_args = create_calls[0][0][2]
+        assert "Focus" in tool_args["summary"]
+
+    async def test_focus_session_default_duration(self):
+        """Test focus session defaults to 90 minutes when unspecified."""
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps({
+                "action": "focus_session",
+                "event_details": {
+                    "summary": "Focus Time",
+                    "duration_minutes": 90,
+                },
+                "response": "Starting focus mode.",
+            })
+        )
+
+        self.mock_mcp.call_tool.return_value = {
+            "id": "event_focus_2",
+            "summary": "Focus Time",
+            "start": "2024-01-15T10:00:00+05:30",
+        }
+
+        result = await self.agent.execute({
+            "message": "Start focus mode",
+            "auth_token": "test-token",
+            "user_id": "user123",
+        })
+
+        assert result["action"] == "focus_session"
+        assert "90 minutes" in result["content"]
+
+
+class TestSubtaskDecomposition:
+    """Tests for the planner's subtask decomposition feature."""
+
+    @pytest.fixture(autouse=True)
+    def setup_planner(self, mock_vertexai_model, mock_mcp_client):
+        """Set up the planner agent with mocked dependencies."""
+        from app.agents.base import AgentRegistry
+
+        AgentRegistry._agents.clear()
+
+        with patch("app.agents.planner.vertexai.init"), \
+             patch("app.agents.planner.GenerativeModel", return_value=mock_vertexai_model):
+            from app.agents.planner import PlannerAgent
+
+            self.agent = PlannerAgent(mcp_client=mock_mcp_client)
+            self.mock_model = mock_vertexai_model
+            self.mock_mcp = mock_mcp_client
+            yield
+            AgentRegistry._agents.clear()
+
+    async def test_decompose_creates_subtasks(self):
+        """Test decompose action creates subtasks via MCP."""
+        decompose_response = {
+            "action": "decompose",
+            "plan_summary": "Break down presentation prep",
+            "tasks": [
+                {"title": "Research key metrics", "notes": "", "due_days_from_now": 2, "priority": "high", "time_estimate": "30 min"},
+                {"title": "Draft slide outline", "notes": "", "due_days_from_now": 3, "priority": "high", "time_estimate": "45 min"},
+                {"title": "Design slides", "notes": "", "due_days_from_now": 4, "priority": "medium", "time_estimate": "1 hour"},
+                {"title": "Practice run-through", "notes": "", "due_days_from_now": 5, "priority": "medium", "time_estimate": "20 min"},
+            ],
+            "response": "I've broken it down:",
+        }
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps(decompose_response)
+        )
+
+        # Mock MCP create_task
+        self.mock_mcp.call_tool.return_value = {"id": "task_new", "title": "subtask"}
+
+        result = await self.agent.execute({
+            "message": "Break down my presentation prep into steps",
+            "auth_token": "test-token",
+            "user_id": "user123",
+        })
+
+        assert result["agent"] == "planner"
+        assert result["action"] == "decompose"
+        assert len(result["tasks"]) == 4
+        # Check formatting includes checkbox and time estimates
+        assert "\u2610" in result["content"]  # empty checkbox
+        assert "30 min" in result["content"]
+        assert "Research key metrics" in result["content"]
+        # MCP should have been called 4 times to create subtasks
+        assert self.mock_mcp.call_tool.call_count == 4
+
+    async def test_decompose_limits_to_6_subtasks(self):
+        """Test that decomposition enforces the max 6 subtask limit."""
+        # Gemini returns 8 subtasks (exceeds limit)
+        decompose_response = {
+            "action": "decompose",
+            "plan_summary": "Break down big project",
+            "tasks": [
+                {"title": f"Step {i}", "notes": "", "due_days_from_now": i, "priority": "medium", "time_estimate": "30 min"}
+                for i in range(1, 9)  # 8 subtasks
+            ],
+            "response": "I've broken it down:",
+        }
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps(decompose_response)
+        )
+
+        self.mock_mcp.call_tool.return_value = {"id": "task_new", "title": "subtask"}
+
+        result = await self.agent.execute({
+            "message": "Decompose the project into steps",
+            "auth_token": "test-token",
+            "user_id": "user123",
+        })
+
+        assert result["action"] == "decompose"
+        # Must be capped at 6
+        assert len(result["tasks"]) <= 6
+        # MCP should have been called at most 6 times
+        assert self.mock_mcp.call_tool.call_count <= 6

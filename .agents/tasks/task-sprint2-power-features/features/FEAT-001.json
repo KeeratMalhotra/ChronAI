@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Backend Power Features: Priority Engine, Smart Scheduling, and Subtask Decomposition. Create the PriorityAgent, enhance SchedulerAgent with suggest_time/focus actions, enhance PlannerAgent with decompose action, update orchestrator routing, add GET /api/priorities endpoint, register new agent in main.py, and add tests.",
+  "status": "in_progress",
+  "steps": [
+    "Create backend/app/agents/priority.py - PriorityAgent inheriting AgentBase. Use generate() to rank tasks by urgency x importance. Fetch tasks via call_mcp_tool('google-tasks','list_tasks') and events via call_mcp_tool('google-calendar','list_events'). Return prioritized list with emoji indicators (red/yellow/green). Consider deadline proximity, meeting prep, user profile priorities.",
+    "Add GET /api/priorities endpoint in backend/app/main.py that authenticates via auth_token query param, calls PriorityAgent.execute(), and returns the ranked task list.",
+    "Register PriorityAgent in main.py lifespan (import and instantiate with mcp_client).",
+    "Enhance backend/app/agents/scheduler.py: add a 'suggest_time' action to SCHEDULER_PROMPT. When user says 'find me time for X' or 'when should I work on X', find free slots using find_free_slots MCP tool, consider user work_hours from profile (via get_user_context), prefer mornings for focus, avoid post-meeting slots. Return suggestion with option to confirm and block time. Also add 'focus_session' action: when user says 'start a focus session for N minutes on X', create a 'Focus Time' calendar event blocking that duration.",
+    "Enhance backend/app/agents/planner.py: add a 'decompose' action to PLANNER_PROMPT. When user says 'break down X' or 'decompose' or 'split into steps' or 'help me plan X', use Gemini to decompose into 3-5 actionable subtasks (max 6). Create each subtask via MCP. Return formatted list with time estimates.",
+    "Update SYSTEM_PROMPT in backend/app/agents/orchestrator.py: add 'priority' agent to available agents list. Add routing rules: 'what should I focus on' / 'prioritize' / 'most important' / 'what matters' -> priority agent. Add routing: 'break down' / 'decompose' / 'split into steps' -> planner. Add routing: 'focus mode' / 'start focus' / 'deep work' / 'pomodoro' / 'focus session' -> scheduler with focus_session instruction. Add routing: 'find me time for' / 'when should I work on' -> scheduler with suggest_time instruction. Update _status_for() in orchestrator to include 'priority' agent.",
+    "Add tests in backend/tests/test_agents.py: TestPriorityAgent class testing priority ranking logic (mock tasks with various deadlines, verify ordering). Test smart scheduling suggestion (mock free slots, verify morning preference). Test subtask decomposition (mock Gemini returning >6 subtasks, verify truncation to max 6). Test focus session (verify calendar event creation)."
+  ],
+  "acceptance_criteria": [
+    "python3.11 -c 'import app.main' succeeds with no errors",
+    "python3.11 -m pytest tests/ -v passes all existing 119 tests plus new tests",
+    "PriorityAgent returns prioritized task list with urgency indicators",
+    "Scheduler handles 'find me time for X' with smart slot suggestions",
+    "Scheduler handles 'start focus session' by creating calendar block",
+    "Planner handles 'break down X' by decomposing into max 6 subtasks",
+    "Orchestrator routes priority/focus/decompose intents correctly"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/backend && python3.11 -c 'import app.main'",
+    "cd /projects/sandbox/ChronAI/backend && python3.11 -m pytest tests/ -v"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

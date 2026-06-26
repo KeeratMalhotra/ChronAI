@@ -27,6 +27,7 @@ from app.agents.base import AgentBase
 from app.config import settings
 from app.db.firestore import get_db
 from app.utils.timectx import IST, now_ist, resolve_relative, time_context_string
+from app.utils.user_context import get_user_context
 
 
 SCHEDULER_PROMPT = """You are a scheduling specialist. You manage the user's calendar.
@@ -42,6 +43,8 @@ ACTION SELECTION RULES:
 - The user wants to CREATE/book an event, OR states they HAVE an event ("I have a meeting at 6pm", "there's a standup at 10am", "Create event: ...") -> action: "create_event"
 - The user wants to MOVE/reschedule an event ("move my 6pm to 8pm", "reschedule the standup to 11") -> action: "reschedule_event"
 - The user wants to CANCEL/delete an event ("cancel my dentist appointment", "delete the standup") -> action: "delete_event"
+- The user wants a SMART TIME SUGGESTION for a task ("find me time for X", "when should I work on X", "I need 2 hours for deep work") -> action: "suggest_time"
+- The user wants to START a FOCUS SESSION ("start a focus session", "focus mode", "deep work for 90 minutes", "pomodoro") -> action: "focus_session"
 
 CLARIFICATION RULES (CRITICAL - this is the most important behavior):
 A calendar event REQUIRES both a concrete DATE and a concrete TIME.
@@ -85,6 +88,23 @@ EXAMPLES:
 - "Schedule a sync" -> {"action": "needs_info", "question": "Sure — what day and time should I schedule the sync for?", "pending": {"summary": "Sync", "duration_minutes": 60}, "awaiting": "time", "intent": "create"}
 - "Move my 6pm to 8pm" -> {"action": "reschedule_event", "event_details": {"match": "6pm", "new_time": "today 20:00"}}
 - "Cancel my dentist appointment" -> {"action": "delete_event", "event_details": {"match": "dentist"}}
+- "Find me 2 hours for deep work" -> {"action": "suggest_time", "event_details": {"summary": "Deep work", "duration_minutes": 120, "preferred_time": "morning"}, "response": "Let me find an optimal slot for deep work."}
+- "When should I work on the presentation?" -> {"action": "suggest_time", "event_details": {"summary": "Work on presentation", "duration_minutes": 60, "preferred_time": "morning"}, "response": "Let me find the best time for presentation work."}
+- "Start a focus session for 90 minutes on the presentation" -> {"action": "focus_session", "event_details": {"summary": "Focus: presentation", "duration_minutes": 90}, "response": "Starting a 90-minute focus session for presentation work."}
+- "Pomodoro for 25 minutes" -> {"action": "focus_session", "event_details": {"summary": "Focus Time", "duration_minutes": 25}, "response": "Starting a 25-minute focus session."}
+
+SUGGEST_TIME RULES:
+- Find free slots using the user's work hours (from profile if available)
+- Prefer morning slots for deep/focus work
+- Avoid slots immediately after meetings (15 min buffer)
+- Consider task deadline if mentioned
+- Suggest the best slot with explanation
+
+FOCUS_SESSION RULES:
+- Create a calendar event immediately blocking the focus time starting NOW
+- Default to 90 minutes if no duration specified
+- Title format: "Focus: [topic]" or "Focus Time" if no topic given
+- Return confirmation with the time block details
 
 Default working hours: 9 AM - 6 PM.
 """
@@ -204,6 +224,12 @@ class SchedulerAgent(AgentBase):
             return self._result(
                 self._format_free_slots(slots, plan.get("response", "")), action
             )
+
+        if action == "suggest_time":
+            return await self._do_suggest_time(auth_token, plan.get("event_details", {}), user_id)
+
+        if action == "focus_session":
+            return await self._do_focus_session(auth_token, plan.get("event_details", {}), user_id)
 
         if action == "create_event":
             return await self._do_create(
@@ -422,6 +448,161 @@ If after merging you STILL lack a concrete date or time, return action "needs_in
                 "intent": "create",
             }
         return {"action": "create_event", "event_details": details}
+
+    # ------------------------------------------------------------------
+    # Smart scheduling: suggest optimal time
+    # ------------------------------------------------------------------
+
+    async def _do_suggest_time(
+        self, auth_token: str, details: dict, user_id: str
+    ) -> dict:
+        """Find an optimal time slot for a task based on free slots and preferences."""
+        duration = details.get("duration_minutes", 60)
+        preferred_time = details.get("preferred_time", "morning")
+        summary = details.get("summary", "this task")
+
+        # Fetch free slots
+        slots = await self._find_free_slots(auth_token, {
+            "duration_minutes": duration,
+            "date_range_days": details.get("date_range_days", 3),
+        })
+
+        if not slots:
+            return self._result(
+                f"I couldn't find any free slots of {duration} minutes in the next few days. "
+                "Want me to widen the search?",
+                "suggest_time",
+            )
+
+        # Pick the best slot: prefer morning for focus work, avoid post-meeting
+        best_slot = self._pick_optimal_slot(slots, preferred_time)
+        if not best_slot:
+            best_slot = slots[0] if slots else {}
+
+        start_str = best_slot.get("start", "")
+        slot_display = self._human_time(self._parse_event_dt(start_str)) if start_str else "an available time"
+
+        # Build a suggestion with option to confirm
+        suggestion = (
+            f"I'd suggest {slot_display} for \"{summary}\" "
+            f"({duration} minutes). "
+            f"Want me to block it on your calendar?"
+        )
+
+        # Store pending so user can confirm
+        pending = {
+            "agent": self.name,
+            "intent": "create",
+            "awaiting": "confirmation",
+            "question": suggestion,
+            "partial": {
+                "summary": summary,
+                "start_time": start_str,
+                "duration_minutes": duration,
+            },
+        }
+        return self._result(suggestion, "suggest_time", pending)
+
+    def _pick_optimal_slot(self, slots: list, preferred_time: str) -> dict:
+        """Pick the best slot from available options based on preference.
+
+        Prefers morning slots for focus/deep work, afternoon for meetings.
+        Avoids very early or very late slots.
+        """
+        real_slots = [
+            s for s in (slots or [])
+            if isinstance(s, dict) and not s.get("error") and s.get("start")
+        ]
+        if not real_slots:
+            return {}
+
+        scored = []
+        for slot in real_slots:
+            dt = self._parse_event_dt(slot.get("start"))
+            if dt is None:
+                continue
+            hour = dt.hour
+            score = 0
+
+            if preferred_time == "morning":
+                # Prefer 9-12 AM
+                if 9 <= hour <= 11:
+                    score += 10
+                elif 8 <= hour <= 12:
+                    score += 5
+            elif preferred_time == "afternoon":
+                # Prefer 13-17
+                if 13 <= hour <= 16:
+                    score += 10
+                elif 12 <= hour <= 17:
+                    score += 5
+            else:
+                # Any time during work hours
+                if 9 <= hour <= 17:
+                    score += 5
+
+            # Penalize very early or late
+            if hour < 8 or hour > 19:
+                score -= 5
+
+            scored.append((score, slot))
+
+        if not scored:
+            return real_slots[0]
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return scored[0][1]
+
+    # ------------------------------------------------------------------
+    # Focus session: create a time block immediately
+    # ------------------------------------------------------------------
+
+    async def _do_focus_session(
+        self, auth_token: str, details: dict, user_id: str
+    ) -> dict:
+        """Create a focus time block on the calendar starting now."""
+        duration = details.get("duration_minutes", 90)
+        summary = details.get("summary", "Focus Time")
+
+        # Ensure the summary starts with "Focus" for clarity
+        if not summary.lower().startswith("focus"):
+            summary = f"Focus: {summary}"
+
+        # Start time is NOW
+        start_time = now_ist().isoformat()
+
+        event_details = {
+            "summary": summary,
+            "start_time": start_time,
+            "duration_minutes": duration,
+            "description": "Focus session - do not disturb",
+        }
+
+        if not (self.mcp_client and auth_token):
+            return self._result(
+                f"Focus session started: {summary} for {duration} minutes. "
+                f"(Calendar block not created - no calendar access.)",
+                "focus_session",
+            )
+
+        result = await self._create_event(auth_token, event_details)
+        if result and not (isinstance(result, dict) and result.get("error")):
+            if user_id:
+                await self._persist_event_to_firestore(user_id, event_details, result)
+
+            end_time = now_ist() + timedelta(minutes=duration)
+            end_display = end_time.strftime("%-I:%M %p")
+            return self._result(
+                f"Focus session started! I've blocked \"{summary}\" for {duration} minutes "
+                f"(until {end_display}). Time to get in the zone!",
+                "focus_session",
+            )
+
+        return self._result(
+            f"I'll start your focus session for {duration} minutes, but couldn't "
+            f"block it on your calendar. Stay focused!",
+            "focus_session",
+        )
 
     # ------------------------------------------------------------------
     # Create (with conflict detection)

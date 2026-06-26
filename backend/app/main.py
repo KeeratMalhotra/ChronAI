@@ -18,6 +18,7 @@ from app.agents.base import AgentRegistry
 from app.agents.orchestrator import OrchestratorAgent
 from app.agents.planner import PlannerAgent
 from app.agents.scheduler import SchedulerAgent
+from app.agents.priority import PriorityAgent
 from app.agents.notification import NotificationAgent
 from app.agents.voice import VoiceAgent
 from app.agents.email import EmailAgent
@@ -143,6 +144,7 @@ async def lifespan(app: FastAPI):
     OrchestratorAgent(mcp_client=mcp_client)
     PlannerAgent(mcp_client=mcp_client)
     SchedulerAgent(mcp_client=mcp_client)
+    PriorityAgent(mcp_client=mcp_client)
     NotificationAgent(mcp_client=mcp_client)
     VoiceAgent(mcp_client=mcp_client)
     EmailAgent(mcp_client=mcp_client)
@@ -705,6 +707,47 @@ async def get_weekly_review(auth_token: str = ""):
 
     review = await generate_weekly_review(user_id, auth_token, mcp_client)
     return {"review": review}
+
+
+@app.get("/api/priorities")
+async def get_priorities(auth_token: str = ""):
+    """Get prioritized task list ranked by urgency x importance.
+
+    Fetches the user's tasks and calendar events, then uses AI to rank
+    them by urgency and importance factors.
+
+    Args:
+        auth_token: Google OAuth token for authentication.
+
+    Returns:
+        Dict with 'priorities' (ranked list) and 'content' (formatted text).
+    """
+    if not auth_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    user = await verify_google_token(auth_token)
+    user_id = user.get("sub", "")
+
+    priority_agent = AgentRegistry.get("priority")
+    if not priority_agent:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Priority agent not available",
+        )
+
+    result = await priority_agent.execute({
+        "message": "prioritize my tasks",
+        "auth_token": auth_token,
+        "user_id": user_id,
+    })
+
+    return {
+        "priorities": result.get("priorities", []),
+        "content": result.get("content", ""),
+    }
 
 
 @app.get("/health")

@@ -24,8 +24,9 @@ SYSTEM_PROMPT = """You are ChronAI's orchestrator agent. Your PRIMARY job is to 
 CRITICAL RULE: When in doubt, ALWAYS route to an agent. Prefer routing over direct_response.
 
 Available agents:
-- scheduler: Manages calendar events, finds time slots, checks schedules, books meetings
-- planner: Breaks goals into subtasks, manages task lists, tracks deadlines, organizes projects
+- scheduler: Manages calendar events, finds time slots, checks schedules, books meetings, focus sessions
+- planner: Breaks goals into subtasks, manages task lists, tracks deadlines, organizes projects, decomposes tasks
+- priority: Ranks tasks by urgency and importance, recommends what to focus on
 - habits: Tracks habits, streaks, and daily check-ins for building routines
 - notification: Generates reminders, sets alerts, sends nudges, proactive suggestions
 - voice: Converts text to speech
@@ -40,9 +41,13 @@ ROUTING RULES (follow these strictly):
 5. ANY mention of reminders, notifications, nudges, alerts, "remind me", "don't forget" -> route to "notification"
 6. ANY mention of email, drafts, messages, send, inbox, compose, reply -> route to "email"
 7. ANY mention of weekly review, productivity report, weekly summary, "how was my week", "how did my week go", "review my week" -> route to "review"
-8. Questions ABOUT calendar/tasks/emails (e.g. "What's on my calendar?", "Do I have any tasks?") ARE routed, not answered directly.
-9. ONLY use direct_response for pure small talk: greetings ("hello", "hi", "hey"), thanks ("thank you", "thanks"), meta questions ("who are you", "what can you do", "what is ChronAI").
-10. When the user STATES they have an event/meeting/appointment ("I have X at Y", "there's X at Y") -> route to "scheduler" with instruction "Create event: [title], [time]". This IS a create request even though they didn't say "create" or "schedule".
+8. ANY mention of "what should I focus on", "prioritize", "most important", "what matters most", "what's urgent", "rank my tasks" -> route to "priority"
+9. ANY mention of "break down", "decompose", "split into steps", "split into subtasks", "help me plan [specific task]" -> route to "planner" with instruction including the decompose request
+10. ANY mention of "focus mode", "start focus", "deep work", "pomodoro", "focus session", "focus time" -> route to "scheduler" with instruction to start a focus session
+11. ANY mention of "find me time for", "when should I work on", "I need X hours for" -> route to "scheduler" with instruction to suggest time
+12. Questions ABOUT calendar/tasks/emails (e.g. "What's on my calendar?", "Do I have any tasks?") ARE routed, not answered directly.
+13. ONLY use direct_response for pure small talk: greetings ("hello", "hi", "hey"), thanks ("thank you", "thanks"), meta questions ("who are you", "what can you do", "what is ChronAI").
+14. When the user STATES they have an event/meeting/appointment ("I have X at Y", "there's X at Y") -> route to "scheduler" with instruction "Create event: [title], [time]". This IS a create request even though they didn't say "create" or "schedule".
 
 EXAMPLES of correct routing:
 - "What's on my calendar?" -> scheduler with instruction "List the user's calendar events for this week"
@@ -67,6 +72,15 @@ EXAMPLES of correct routing:
 - "How was my week?" -> review with instruction "Generate weekly productivity review"
 - "Give me a weekly summary" -> review with instruction "Generate weekly productivity review"
 - "Show my productivity report" -> review with instruction "Generate weekly productivity review"
+- "What should I focus on?" -> priority with instruction "Prioritize the user's tasks and events"
+- "What's most important right now?" -> priority with instruction "Prioritize the user's tasks and events"
+- "Prioritize my tasks" -> priority with instruction "Rank tasks by urgency and importance"
+- "Break down my presentation prep into steps" -> planner with instruction "Decompose: presentation prep into actionable subtasks"
+- "Split the project into subtasks" -> planner with instruction "Decompose: split the project into subtasks"
+- "Start a focus session for 90 minutes on the report" -> scheduler with instruction "Start focus session: 90 minutes on the report"
+- "Deep work for 2 hours" -> scheduler with instruction "Start focus session: 120 minutes, deep work"
+- "Find me time for the presentation" -> scheduler with instruction "Suggest time: find optimal slot for presentation work"
+- "I need 2 hours for deep work" -> scheduler with instruction "Suggest time: find 2-hour slot for deep work"
 - "Hello!" -> direct_response: "Hey! I'm ChronAI, your AI productivity assistant. I can help you manage your calendar, tasks, emails, and reminders. What would you like to do?"
 
 Respond with a JSON object:
@@ -437,6 +451,7 @@ Respond with JSON: {{"resolution": "answer"}} or {{"resolution": "new_topic"}}."
         return {
             "scheduler": "Checking your calendar...",
             "planner": "Organizing your tasks...",
+            "priority": "Analyzing your priorities...",
             "habits": "Checking your habits...",
             "notification": "Reviewing your reminders...",
             "email": "Looking through your email...",

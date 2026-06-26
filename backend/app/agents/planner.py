@@ -34,6 +34,8 @@ ACTION SELECTION RULES (read carefully - this is critical):
   Examples of WRITE: "add a task to call the dentist", "create a task: finish report by Friday", "remind me to buy milk", "help me plan a launch party", "I need to prepare for the interview", "I have a deadline Friday", "I have a report due next week", "there's a submission deadline on Monday"
 - COMPLETE intent -> action: "complete_task". The user says they finished, completed, or are done with a task. The instruction starts with "complete_task:" or the user says "I finished X", "done with X", "mark X as done", "completed X".
   Examples of COMPLETE: "I finished the report", "done with buying groceries", "mark the dentist call as done", "completed the code review", "complete_task: buy milk"
+- DECOMPOSE intent -> action: "decompose". The user wants to BREAK DOWN a task or goal into subtasks/steps. They say "break down", "decompose", "split into steps", "help me plan [specific task]", "what are the steps for".
+  Examples of DECOMPOSE: "break down my presentation prep into steps", "decompose the project launch", "split the report into subtasks", "help me plan the wedding", "what steps do I need for the interview prep"
 - When the user only wants to look at existing tasks, ALWAYS choose "list_tasks". Creating junk tasks for a read request is a serious error.
 - When the user STATES they have a deadline or deliverable ("I have X due by Y", "there's a deadline on Y") -> action: "create_tasks". This IS a create request even though they didn't say "create" or "add". Create a single task with the appropriate deadline.
 - For "create_tasks", create ONLY the tasks the user actually asked for. A single simple request = a single task. Only decompose into multiple subtasks when the user gives a broad goal that genuinely needs a plan. Never spam many tasks for a simple query.
@@ -43,6 +45,13 @@ ACTION SELECTION RULES (read carefully - this is critical):
 DEADLINE CLARIFICATION RULE:
 - A simple errand with no implied urgency does NOT need a deadline. e.g. "add a task to call mom" -> just create it (the system picks a sensible default). Do NOT ask for a deadline here.
 - BUT when the user clearly implies a time-bound deliverable WITHOUT giving the specific date ("I have a report due", "I need to submit the assignment soon", "there's a deadline coming up") -> action: "needs_info". Ask specifically WHEN it is due. Do NOT invent a deadline.
+
+DECOMPOSE RULES:
+- Break the goal into 3-5 actionable subtasks (MAXIMUM 6, never more)
+- Each subtask should be specific, concrete, and completable in one sitting
+- Include a time estimate for each subtask
+- If the model generates more than 6 subtasks, keep only the 6 most important ones
+- Return action "decompose" with the subtasks list
 
 When action is "needs_info", respond with:
 {
@@ -55,15 +64,16 @@ When action is "needs_info", respond with:
 
 Otherwise respond with a JSON object:
 {
-  "action": "list_tasks" | "create_tasks" | "complete_task",
-  "plan_summary": "brief description of the plan (create_tasks only)",
+  "action": "list_tasks" | "create_tasks" | "complete_task" | "decompose",
+  "plan_summary": "brief description of the plan (create_tasks/decompose only)",
   "task_name": "name of task to complete (complete_task only)",
   "tasks": [
     {
       "title": "task title",
       "notes": "additional details or instructions",
       "due_days_from_now": number_of_days,
-      "priority": "high|medium|low"
+      "priority": "high|medium|low",
+      "time_estimate": "optional time estimate e.g. '30 min', '1 hour'"
     }
   ],
   "response": "A natural language summary to share with the user"
@@ -151,6 +161,10 @@ class PlannerAgent(AgentBase):
                 task_name = message.replace("complete_task:", "").strip()
             result = await self._complete_task(auth_token, task_name)
             return result
+
+        # DECOMPOSE intent: break a goal into subtasks (max 6).
+        if action == "decompose":
+            return await self._decompose_task(plan, auth_token, user_id)
 
         # WRITE intent: create the requested task(s).
         created_tasks = []
@@ -373,6 +387,73 @@ contain a usable deadline, return action "needs_info" again."""
             return result if isinstance(result, list) else []
         except Exception:
             return []
+
+    async def _decompose_task(self, plan: dict, auth_token: str, user_id: str) -> dict:
+        """Break down a goal into actionable subtasks (max 6).
+
+        Creates each subtask via MCP and returns a formatted list.
+
+        Args:
+            plan: The analyzed plan dict with 'tasks' from Gemini.
+            auth_token: Google OAuth token.
+            user_id: User ID for Firestore persistence.
+
+        Returns:
+            Response dict with decomposed subtasks.
+        """
+        subtasks = plan.get("tasks", [])
+
+        # Enforce max 6 subtasks
+        if len(subtasks) > 6:
+            subtasks = subtasks[:6]
+
+        # Create each subtask via MCP
+        created_tasks = []
+        if self.mcp_client and auth_token and subtasks:
+            for task_item in subtasks:
+                try:
+                    result = await self.call_mcp_tool(
+                        "google-tasks",
+                        "create_task",
+                        {
+                            "title": task_item["title"],
+                            "notes": task_item.get("notes", ""),
+                            "due_days_from_now": task_item.get("due_days_from_now", 7),
+                            "auth_token": auth_token,
+                        },
+                    )
+                    created_tasks.append(result)
+                except Exception:
+                    pass
+
+        # Persist to Firestore
+        if user_id and subtasks:
+            await self._persist_tasks_to_firestore(user_id, subtasks)
+
+        # Format the response
+        response_content = plan.get("response", "I've broken it down:")
+        if subtasks:
+            lines = [response_content]
+            for i, task_item in enumerate(subtasks, 1):
+                title = task_item.get("title", "Subtask")
+                time_est = task_item.get("time_estimate", "")
+                line = f"{i}. \u2610 {title}"
+                if time_est:
+                    line += f" ({time_est})"
+                lines.append(line)
+            response_content = "\n".join(lines)
+
+        if created_tasks:
+            response_content += f"\n\nCreated {len(created_tasks)} subtask(s) in your Google Tasks."
+
+        return {
+            "content": response_content,
+            "agent": self.name,
+            "action": "decompose",
+            "tasks": subtasks,
+            "created_count": len(created_tasks),
+            "pending_action": None,
+        }
 
     async def _complete_task(self, auth_token: str, task_name: str) -> dict:
         """Mark a task as completed by finding it by name and calling MCP.
