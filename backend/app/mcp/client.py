@@ -5,9 +5,12 @@ and executes tool calls on behalf of agents.
 """
 
 import asyncio
+import logging
 import sys
 from contextlib import AsyncExitStack
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -148,7 +151,23 @@ class MCPClient:
                 f"Available tools: {list(server.tools.keys())}"
             )
 
-        result = await server.session.call_tool(tool_name, arguments)
+        logger.info(f"Calling MCP tool '{tool_name}' on server '{server_name}' with args: {arguments}")
+
+        try:
+            result = await asyncio.wait_for(
+                server.session.call_tool(tool_name, arguments),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"MCP tool '{tool_name}' on server '{server_name}' timed out after 30 seconds")
+            raise RuntimeError(
+                f"MCP tool '{tool_name}' on server '{server_name}' timed out after 30 seconds"
+            )
+        except Exception as e:
+            logger.error(f"MCP tool '{tool_name}' on server '{server_name}' failed: {e}", exc_info=True)
+            raise
+
+        logger.info(f"MCP tool '{tool_name}' returned successfully")
 
         # Extract content from the result
         if result.content:

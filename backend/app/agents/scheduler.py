@@ -7,8 +7,11 @@ Optionally persists scheduled events to Firestore.
 
 import asyncio
 import json
+import logging
 from datetime import datetime
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 import vertexai
 from vertexai.generative_models import GenerativeModel
@@ -75,6 +78,8 @@ class SchedulerAgent(AgentBase):
         message = task.get("message", "")
         auth_token = task.get("auth_token", "")
         user_id = task.get("user_id", "")
+
+        logger.info(f"[scheduler] Executing action={task.get('message', '')[:50]}, has_mcp={bool(self.mcp_client)}, has_token={bool(auth_token)}")
 
         # Use Gemini to understand the scheduling request
         schedule_plan = await self._analyze_scheduling_request(message)
@@ -149,7 +154,8 @@ Scheduling request: {message}"""
                 "list_events",
                 {"auth_token": auth_token, "days_ahead": 7},
             )
-        except Exception:
+        except Exception as e:
+            logger.error(f"[scheduler] _list_events failed: {e}", exc_info=True)
             return []
 
     async def _find_free_slots(self, auth_token: str, details: dict) -> list[dict]:
@@ -172,7 +178,8 @@ Scheduling request: {message}"""
                     "days_ahead": details.get("date_range_days", 7),
                 },
             )
-        except Exception:
+        except Exception as e:
+            logger.error(f"[scheduler] _find_free_slots failed: {e}", exc_info=True)
             return []
 
     async def _create_event(self, auth_token: str, details: dict) -> dict:
@@ -196,7 +203,8 @@ Scheduling request: {message}"""
                     "duration_minutes": details.get("duration_minutes", 60),
                 },
             )
-        except Exception:
+        except Exception as e:
+            logger.error(f"[scheduler] _create_event failed: {e}", exc_info=True)
             return {}
 
     async def _persist_event_to_firestore(

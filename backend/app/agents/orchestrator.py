@@ -5,7 +5,10 @@ Analyzes user intent using Gemini 2.5 Flash via Vertex AI and routes to speciali
 
 import asyncio
 import json
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 import vertexai
 from vertexai.generative_models import GenerativeModel
@@ -99,6 +102,8 @@ class OrchestratorAgent(AgentBase):
         # Analyze intent with Gemini
         routing = await self._analyze_intent(message, conversation_history)
 
+        logger.info(f"[orchestrator] Routing: intent={routing.get('intent')}, agents={routing.get('agents', [])}")
+
         # If direct response (no agents needed)
         if routing.get("direct_response") and not routing.get("agents"):
             response_content = routing["direct_response"]
@@ -119,6 +124,7 @@ class OrchestratorAgent(AgentBase):
             agent = AgentRegistry.get(agent_name)
 
             if agent:
+                logger.info(f"[orchestrator] Dispatching to '{agent_name}': {instruction}")
                 result = await agent.execute(
                     {
                         "message": instruction,
@@ -126,6 +132,7 @@ class OrchestratorAgent(AgentBase):
                         "auth_token": auth_token,
                     }
                 )
+                logger.info(f"[orchestrator] '{agent_name}' responded with {len(result.get('content', ''))} chars")
                 results.append(result)
 
         # Consolidate responses
@@ -179,6 +186,7 @@ Analyze the intent and decide routing."""
 
             return json.loads(response.text)
         except Exception as e:
+            logger.error(f"[orchestrator] Intent analysis failed: {e}", exc_info=True)
             # Fallback: treat as direct response
             return {
                 "intent": "general_chat",

@@ -1,7 +1,10 @@
 """Base class for all ChronAI agents."""
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class AgentRegistry:
@@ -100,7 +103,12 @@ class AgentBase(ABC):
         """
         if not self.mcp_client:
             raise RuntimeError(f"Agent '{self.name}' has no MCP client configured.")
-        return await self.mcp_client.call_tool(server_name, tool_name, arguments)
+        logger.info(f"[{self.name}] Calling MCP tool: {server_name}/{tool_name}")
+        try:
+            return await self.mcp_client.call_tool(server_name, tool_name, arguments)
+        except Exception as e:
+            logger.error(f"[{self.name}] MCP tool call failed: {server_name}/{tool_name} - {e}", exc_info=True)
+            raise
 
     def bind_tools(self, tool_definitions: dict[str, dict]) -> None:
         """Bind MCP tool definitions to this agent.
