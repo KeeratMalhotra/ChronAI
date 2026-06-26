@@ -104,7 +104,14 @@ async def _send_nudge_email(user_email: str, nudge_message: str, task_title: str
         logger.info(f"Nudge email sent to {user_email} for task '{task_title}'")
         return True
     except Exception as e:
-        logger.error(f"Failed to send nudge email to {user_email}: {e}")
+        logger.error(
+            "Failed to send nudge email to %s for task '%s': [%s] %s",
+            user_email,
+            task_title,
+            type(e).__name__,
+            e,
+            exc_info=True,
+        )
         return False
 
 

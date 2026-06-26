@@ -621,13 +621,20 @@ async def checkin_habit(body: HabitCheckinRequest):
             detail="Authentication required",
         )
 
-    await verify_google_token(body.auth_token)
+    user = await verify_google_token(body.auth_token)
+    user_id = user.get("sub", "")
 
     habit = await HabitRepository.get_by_id(body.habit_id)
     if not habit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Habit not found",
+        )
+
+    if habit.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to modify this habit",
         )
 
     await HabitRepository.record_completion(body.habit_id)
@@ -654,13 +661,20 @@ async def delete_habit(habit_id: str, auth_token: str = ""):
             detail="Authentication required",
         )
 
-    await verify_google_token(auth_token)
+    user = await verify_google_token(auth_token)
+    user_id = user.get("sub", "")
 
     habit = await HabitRepository.get_by_id(habit_id)
     if not habit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Habit not found",
+        )
+
+    if habit.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to modify this habit",
         )
 
     await HabitRepository.delete(habit_id)

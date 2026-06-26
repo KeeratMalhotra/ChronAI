@@ -408,3 +408,63 @@ class TestHabitRoutes:
         """Test GET /api/habits without auth returns 401."""
         response = await client.get("/api/habits")
         assert response.status_code == 401
+
+    async def test_checkin_habit_idor_blocked(self, client):
+        """Test POST /api/habits/checkin rejects access to another user's habit."""
+        from app.db.repositories import HabitRepository
+        from app.db.models import Habit
+
+        # Create a habit owned by a different user
+        habit = Habit(user_id="other_user_999", name="yoga", frequency="daily", target_days=7, streak=5)
+        created = await HabitRepository.create(habit)
+
+        response = await client.post("/api/habits/checkin", json={
+            "auth_token": "test-token",
+            "habit_id": created.id,
+        })
+        assert response.status_code == 403
+        assert "Not authorized" in response.json()["detail"]
+
+    async def test_delete_habit_idor_blocked(self, client):
+        """Test DELETE /api/habits/{id} rejects deletion of another user's habit."""
+        from app.db.repositories import HabitRepository
+        from app.db.models import Habit
+
+        # Create a habit owned by a different user
+        habit = Habit(user_id="other_user_999", name="running", frequency="daily", target_days=5, streak=3)
+        created = await HabitRepository.create(habit)
+
+        response = await client.delete(
+            f"/api/habits/{created.id}",
+            params={"auth_token": "test-token"},
+        )
+        assert response.status_code == 403
+        assert "Not authorized" in response.json()["detail"]
+
+        # Verify the habit still exists
+        still_exists = await HabitRepository.get_by_id(created.id)
+        assert still_exists is not None
+
+    async def test_checkin_idempotent_same_day(self, client):
+        """Test POST /api/habits/checkin is idempotent: double check-in same day does not inflate streak."""
+        from app.db.repositories import HabitRepository
+        from app.db.models import Habit
+
+        habit = Habit(user_id="user123", name="stretching", frequency="daily", target_days=7, streak=0)
+        created = await HabitRepository.create(habit)
+
+        # First check-in should increment streak to 1
+        response = await client.post("/api/habits/checkin", json={
+            "auth_token": "test-token",
+            "habit_id": created.id,
+        })
+        assert response.status_code == 200
+        assert response.json()["habit"]["streak"] == 1
+
+        # Second check-in same day should NOT increment streak
+        response2 = await client.post("/api/habits/checkin", json={
+            "auth_token": "test-token",
+            "habit_id": created.id,
+        })
+        assert response2.status_code == 200
+        assert response2.json()["habit"]["streak"] == 1

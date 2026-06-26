@@ -132,6 +132,7 @@ export default function HabitsDrawer({
   const [habits, setHabits] = useState<HabitItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [checkedIn, setCheckedIn] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
   // Add-habit form state
   const [showForm, setShowForm] = useState(false);
@@ -154,6 +155,7 @@ export default function HabitsDrawer({
   }, [open, accessToken, loadHabits]);
 
   const handleCheckin = async (habitId: string) => {
+    setError(null);
     try {
       const updated = await checkinHabit(accessToken, habitId);
       setHabits((prev) =>
@@ -169,7 +171,7 @@ export default function HabitsDrawer({
         });
       }, 800);
     } catch {
-      // silently fail
+      setError("Failed to check in. Please try again.");
     }
   };
 
@@ -177,6 +179,7 @@ export default function HabitsDrawer({
     e.preventDefault();
     if (!newName.trim() || creating) return;
     setCreating(true);
+    setError(null);
     try {
       const habit = await createHabit(
         accessToken,
@@ -188,7 +191,7 @@ export default function HabitsDrawer({
       setNewName("");
       setShowForm(false);
     } catch {
-      // silently fail
+      setError("Failed to create habit. Please try again.");
     } finally {
       setCreating(false);
     }
@@ -203,6 +206,13 @@ export default function HabitsDrawer({
       icon={<Flame size={18} />}
     >
       <div className="flex flex-col gap-3">
+        {/* Error banner */}
+        {error && (
+          <div className="rounded-xl bg-red-500/10 px-4 py-2 text-sm text-red-400 ring-1 ring-red-500/20">
+            {error}
+          </div>
+        )}
+
         {/* Loading state */}
         {loading && habits.length === 0 && (
           <div className="py-8 text-center text-sm text-white/40">

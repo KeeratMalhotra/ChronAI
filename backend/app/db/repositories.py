@@ -274,17 +274,37 @@ class HabitRepository:
         )
 
     @classmethod
-    async def record_completion(cls, habit_id: str) -> None:
+    async def record_completion(cls, habit_id: str) -> bool:
         """Record a habit completion, updating streak and history.
+
+        Performs same-day deduplication: if the habit was already completed
+        today, the call is a no-op and returns False.
 
         Args:
             habit_id: The Firestore document ID.
+
+        Returns:
+            True if the completion was recorded, False if already completed today.
         """
         db = get_db()
         doc = await db.collection(cls.COLLECTION).document(habit_id).get()
         if doc.exists:
             data = doc.to_dict()
             now = datetime.utcnow()
+            today = now.date()
+
+            # Same-day deduplication: skip if already completed today
+            last_completed = data.get("last_completed")
+            if last_completed is not None:
+                if hasattr(last_completed, "date"):
+                    last_date = last_completed.date()
+                elif isinstance(last_completed, str):
+                    last_date = datetime.fromisoformat(last_completed).date()
+                else:
+                    last_date = None
+                if last_date == today:
+                    return False
+
             streak = data.get("streak", 0) + 1
             history = data.get("history", [])
             history.append({"completed_at": now.isoformat()})
@@ -295,6 +315,8 @@ class HabitRepository:
                     "history": history,
                 }
             )
+            return True
+        return False
 
     @classmethod
     async def delete(cls, habit_id: str) -> None:
