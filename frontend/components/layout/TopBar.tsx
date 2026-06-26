@@ -8,6 +8,7 @@ interface TopBarProps {
   email?: string | null;
   image?: string | null;
   connected?: boolean;
+  accessToken?: string;
 }
 
 /**
@@ -15,7 +16,7 @@ interface TopBarProps {
  * A whisper-quiet top bar: the ChronAI wordmark on the left, a subtle live
  * connection indicator, and the account/settings avatar on the right.
  */
-export default function TopBar({ name, email, image, connected }: TopBarProps) {
+export default function TopBar({ name, email, image, connected, accessToken }: TopBarProps) {
   return (
     <motion.header
       initial={{ opacity: 0, y: -12 }}
@@ -46,7 +47,7 @@ export default function TopBar({ name, email, image, connected }: TopBarProps) {
       </div>
 
       <div className="pointer-events-auto">
-        <SettingsMenu name={name} email={email} image={image} />
+        <SettingsMenu name={name} email={email} image={image} accessToken={accessToken} />
       </div>
     </motion.header>
   );

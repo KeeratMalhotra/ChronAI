@@ -60,6 +60,7 @@ export default function DashboardPage() {
         email={user?.email}
         image={user?.image}
         connected={connection === "connected"}
+        accessToken={accessToken}
       />
 
       <SideDock active={activePanel} onOpen={openPanel} />

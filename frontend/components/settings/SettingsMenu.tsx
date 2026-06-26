@@ -10,11 +10,13 @@ import {
   LogOut,
   type LucideIcon,
 } from "lucide-react";
+import { checkTokenScopes } from "@/lib/api";
 
 interface SettingsMenuProps {
   name?: string | null;
   email?: string | null;
   image?: string | null;
+  accessToken?: string;
 }
 
 interface Service {
@@ -29,16 +31,40 @@ interface Service {
  * Top-right avatar that opens a frosted dropdown: profile, connected services
  * with live status dots + a Connect/Disconnect toggle, and sign out.
  */
-export default function SettingsMenu({ name, email, image }: SettingsMenuProps) {
+export default function SettingsMenu({ name, email, image, accessToken }: SettingsMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Calendar + Tasks are granted by the Google OAuth scopes; Gmail is opt-in.
   const [services, setServices] = useState<Service[]>([
-    { key: "calendar", label: "Google Calendar", icon: Calendar, connected: true },
-    { key: "tasks", label: "Google Tasks", icon: CheckSquare, connected: true },
+    { key: "calendar", label: "Google Calendar", icon: Calendar, connected: false },
+    { key: "tasks", label: "Google Tasks", icon: CheckSquare, connected: false },
     { key: "gmail", label: "Gmail", icon: Mail, connected: false },
   ]);
+
+  // Check actual granted scopes when accessToken is available
+  useEffect(() => {
+    if (!accessToken) return;
+
+    let cancelled = false;
+
+    checkTokenScopes(accessToken).then((scopeString) => {
+      if (cancelled) return;
+
+      const hasCalendar = scopeString.includes("https://www.googleapis.com/auth/calendar");
+      const hasTasks = scopeString.includes("https://www.googleapis.com/auth/tasks");
+      const hasGmail = scopeString.includes("gmail");
+
+      setServices([
+        { key: "calendar", label: "Google Calendar", icon: Calendar, connected: hasCalendar },
+        { key: "tasks", label: "Google Tasks", icon: CheckSquare, connected: hasTasks },
+        { key: "gmail", label: "Gmail", icon: Mail, connected: hasGmail },
+      ]);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -50,12 +76,9 @@ export default function SettingsMenu({ name, email, image }: SettingsMenuProps) 
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const toggleService = (key: string) =>
-    setServices((prev) =>
-      prev.map((s) =>
-        s.key === key ? { ...s, connected: !s.connected } : s
-      )
-    );
+  const handleConnect = () => {
+    signOut({ callbackUrl: "/" });
+  };
 
   const initial = (name || email || "U").trim().charAt(0).toUpperCase();
 
@@ -104,7 +127,7 @@ export default function SettingsMenu({ name, email, image }: SettingsMenuProps) 
                   {name || "Signed in"}
                 </p>
                 <p className="truncate text-xs text-white/45">
-                  {email || "—"}
+                  {email || ""}
                 </p>
               </div>
             </div>
@@ -129,20 +152,22 @@ export default function SettingsMenu({ name, email, image }: SettingsMenuProps) 
                         className={`h-1.5 w-1.5 rounded-full ${
                           s.connected
                             ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]"
-                            : "bg-white/25"
+                            : "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)]"
                         }`}
                       />
                     </div>
-                    <button
-                      onClick={() => toggleService(s.key)}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                        s.connected
-                          ? "text-white/50 hover:text-white/80"
-                          : "bg-white/10 text-white hover:bg-white/15"
-                      }`}
-                    >
-                      {s.connected ? "Disconnect" : "Connect"}
-                    </button>
+                    {s.connected ? (
+                      <span className="text-xs font-medium text-white/40">
+                        Connected
+                      </span>
+                    ) : (
+                      <button
+                        onClick={handleConnect}
+                        className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-white/15"
+                      >
+                        Connect
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

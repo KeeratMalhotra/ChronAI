@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Per-Service OAuth Connection Status in SettingsMenu - Check actual granted scopes via Google tokeninfo and show real-time connection status with Connect button triggering re-auth",
+  "status": "in_progress",
+  "steps": [
+    "Modify frontend/components/settings/SettingsMenu.tsx to accept an additional prop: accessToken?: string.",
+    "On mount (when accessToken is available), call the checkTokenScopes(accessToken) function from @/lib/api to get the actual scope string from Google's tokeninfo endpoint.",
+    "Parse the returned scope string to determine which services are connected: 'https://www.googleapis.com/auth/calendar' for Calendar, 'https://www.googleapis.com/auth/tasks' for Tasks, 'https://www.googleapis.com/auth/gmail' (or gmail.modify/gmail.readonly) for Gmail.",
+    "Update the services state based on actual scope results: green dot + 'Connected' text for present scopes, amber/yellow dot + 'Not connected' for missing scopes.",
+    "Replace the toggle button with a 'Connect' button for disconnected services that triggers signOut + re-sign in (signOut({ callbackUrl: '/' }) which forces re-consent with all scopes on next login).",
+    "For connected services, show a subtle 'Connected' label instead of a button (no disconnect action needed per spec).",
+    "Update the green dot style to use shadow glow: bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]. Amber dot: bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)].",
+    "Update frontend/app/dashboard/page.tsx to pass accessToken to SettingsMenu (via TopBar or directly). Check how TopBar renders SettingsMenu and pass the token through.",
+    "Update frontend/components/layout/TopBar.tsx to accept and forward accessToken to SettingsMenu."
+  ],
+  "acceptance_criteria": [
+    "SettingsMenu accepts accessToken prop and calls checkTokenScopes on mount",
+    "Services show real connection status based on tokeninfo response",
+    "Disconnected services show amber dot and 'Connect' button that triggers signOut",
+    "Frontend build passes: cd frontend && pnpm build"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && pnpm build"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
