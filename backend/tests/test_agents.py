@@ -142,6 +142,57 @@ class TestPlannerAgent:
         assert len(result["tasks"]) == 2
         assert result["agent"] == "planner"
 
+    async def test_planner_read_intent_lists_not_creates(self):
+        """CRITICAL: a READ request must call list_tasks and NEVER create tasks."""
+        # Gemini classifies the request as a read.
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps({
+                "action": "list_tasks",
+                "tasks": [],
+                "response": "Let me pull up your tasks.",
+            })
+        )
+        # MCP list_tasks returns the user's existing tasks.
+        self.mock_mcp.call_tool.return_value = [
+            {"id": "1", "title": "Buy groceries", "completed": False, "due": "2024-01-15T00:00:00.000Z"},
+            {"id": "2", "title": "Submit report", "completed": True, "due": ""},
+        ]
+
+        result = await self.agent.execute({
+            "message": "what tasks do I have today?",
+            "auth_token": "test-token",
+            "user_id": "",
+        })
+
+        # It must have read, not created.
+        assert result["action"] == "list_tasks"
+        self.mock_mcp.call_tool.assert_called_once()
+        called_args = self.mock_mcp.call_tool.call_args[0]
+        assert called_args[1] == "list_tasks"
+        # Content shows the existing tasks in a friendly list.
+        assert "Buy groceries" in result["content"]
+        assert "Submit report" in result["content"]
+
+    async def test_planner_read_empty_state(self):
+        """A READ request with no tasks returns a friendly empty-state message."""
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps({
+                "action": "list_tasks",
+                "tasks": [],
+                "response": "Let me check.",
+            })
+        )
+        self.mock_mcp.call_tool.return_value = []
+
+        result = await self.agent.execute({
+            "message": "show my tasks",
+            "auth_token": "test-token",
+            "user_id": "",
+        })
+
+        assert result["action"] == "list_tasks"
+        assert "no tasks" in result["content"].lower()
+
 
 class TestSchedulerAgent:
     """Tests for the SchedulerAgent."""
@@ -334,3 +385,117 @@ class TestVoiceAgent:
 
         assert result["content"] == ""
         assert result.get("error") == "No text provided for synthesis"
+
+
+class TestGenerateHelper:
+    """Tests for the shared AgentBase.generate() timeout/fallback helper."""
+
+    @pytest.fixture(autouse=True)
+    def setup_agent(self, mock_mcp_client):
+        from app.agents.base import AgentRegistry, AgentBase
+
+        AgentRegistry._agents.clear()
+
+        class _DummyAgent(AgentBase):
+            name = "dummy"
+
+            async def execute(self, task: dict) -> dict:
+                return {"content": "", "agent": self.name}
+
+        self.agent = _DummyAgent(mcp_client=mock_mcp_client)
+        yield
+        AgentRegistry._agents.clear()
+
+    async def test_generate_returns_text_on_success(self):
+        self.agent.model = MagicMock()
+        self.agent.model.generate_content = MagicMock(return_value=MagicMock(text="hello"))
+
+        result = await self.agent.generate("prompt", fallback="FALLBACK")
+
+        assert result == "hello"
+
+    async def test_generate_returns_fallback_on_error(self):
+        self.agent.model = MagicMock()
+        self.agent.model.generate_content = MagicMock(side_effect=RuntimeError("boom"))
+
+        result = await self.agent.generate("prompt", fallback="FALLBACK")
+
+        assert result == "FALLBACK"
+
+    async def test_generate_returns_fallback_on_timeout(self):
+        import time
+
+        self.agent.model = MagicMock()
+        # Blocking call that exceeds the (tiny) timeout we pass in.
+        self.agent.model.generate_content = MagicMock(
+            side_effect=lambda *a, **k: time.sleep(1.0)
+        )
+
+        result = await self.agent.generate("prompt", fallback="FALLBACK", timeout=0.05)
+
+        assert result == "FALLBACK"
+
+    async def test_generate_returns_fallback_when_no_model(self):
+        self.agent.model = None
+        result = await self.agent.generate("prompt", fallback="FALLBACK")
+        assert result == "FALLBACK"
+
+
+class TestOrchestratorStatusCallback:
+    """Tests for the orchestrator's real-time status callback."""
+
+    @pytest.fixture(autouse=True)
+    def setup_orchestrator(self, mock_vertexai_model, mock_mcp_client):
+        from app.agents.base import AgentRegistry
+
+        AgentRegistry._agents.clear()
+
+        with patch("app.agents.orchestrator.vertexai.init"), \
+             patch("app.agents.orchestrator.GenerativeModel", return_value=mock_vertexai_model):
+            from app.agents.orchestrator import OrchestratorAgent
+
+            self.agent = OrchestratorAgent(mcp_client=mock_mcp_client)
+            self.mock_model = mock_vertexai_model
+            yield
+            AgentRegistry._agents.clear()
+
+    async def test_status_callback_emitted_before_agent(self):
+        from app.agents.base import AgentRegistry
+
+        mock_scheduler = AsyncMock()
+        mock_scheduler.execute = AsyncMock(return_value={
+            "content": "Your calendar is clear this week!",
+            "agent": "scheduler",
+        })
+        AgentRegistry._agents["scheduler"] = mock_scheduler
+
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps({
+                "intent": "calendar_query",
+                "agents": ["scheduler"],
+                "tasks": [{"agent": "scheduler", "instruction": "List events"}],
+                "direct_response": None,
+            })
+        )
+
+        statuses = []
+
+        async def status_callback(payload):
+            statuses.append(payload)
+
+        result = await self.agent.execute(
+            {
+                "message": "what's on my calendar?",
+                "auth_token": "test-token",
+                "conversation_history": [],
+            },
+            status_callback=status_callback,
+        )
+
+        # A status update was emitted for the scheduler before its work.
+        assert len(statuses) == 1
+        assert statuses[0]["type"] == "status"
+        assert statuses[0]["agent"] == "scheduler"
+        assert statuses[0]["content"]  # non-empty friendly text
+        # Single agent -> returned verbatim (no consolidation Gemini call).
+        assert result["content"] == "Your calendar is clear this week!"
