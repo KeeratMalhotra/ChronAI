@@ -1,0 +1,7 @@
+{
+  "task_id": "task-calendar-fix-ui-overhaul",
+  "task_description": "Fix Calendar MCP integration (add logging, timeouts, debug output to scheduler agent flow) and complete frontend UI overhaul (particle system redesign as broken torus waveform, HUD labels, typing indicator, connection status, settings page, dashboard layout)",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

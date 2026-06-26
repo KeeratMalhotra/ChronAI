@@ -10,7 +10,7 @@ import { getVoiceAudioElement } from "../../lib/voice";
 import vertexShader from "./shaders/vertex.glsl";
 import fragmentShader from "./shaders/fragment.glsl";
 
-const PARTICLE_COUNT = 3000;
+const PARTICLE_COUNT = 6000;
 
 export default function ParticleSystem() {
   const meshRef = useRef<THREE.Points>(null);
@@ -31,7 +31,7 @@ export default function ParticleSystem() {
     []
   );
 
-  // Generate particle positions in a ring/sphere formation
+  // Generate particle positions in a torus formation with waveform distortion
   const { positions, randoms, phases } = useMemo(() => {
     const positions = new Float32Array(PARTICLE_COUNT * 3);
     const randoms = new Float32Array(PARTICLE_COUNT);
@@ -40,21 +40,22 @@ export default function ParticleSystem() {
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const i3 = i * 3;
 
-      // Distribute in a sphere/ring shape
-      // Use golden ratio for even distribution
-      const phi = Math.acos(1 - (2 * (i + 0.5)) / PARTICLE_COUNT);
-      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
-
-      // Radius varies to create a ring-like density (more particles at certain radii)
-      const baseRadius = 1.5 + Math.sin(phi * 3) * 0.5;
-      const radius = baseRadius + (Math.random() - 0.5) * 0.8;
-
-      positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
-      positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-      positions[i3 + 2] = (Math.random() - 0.5) * 1.5;
-
+      const theta = (i / PARTICLE_COUNT) * Math.PI * 2 * 3; // 3 windings for density
+      const phi = (i / PARTICLE_COUNT) * Math.PI * 2;
+      const majorRadius = 2.0;
+      // Waveform distortion on tube radius
+      const waveform = Math.sin(theta * 5) * 0.15 + Math.sin(theta * 13) * 0.08 + Math.sin(theta * 7) * 0.1 + Math.sin(theta * 3) * 0.12;
+      const tubeRadius = 0.3 + waveform;
+      const x = (majorRadius + tubeRadius * Math.cos(phi)) * Math.cos(theta);
+      const y = (majorRadius + tubeRadius * Math.cos(phi)) * Math.sin(theta);
+      const z = tubeRadius * Math.sin(phi);
+      // Add small jitter
+      positions[i3] = x + (Math.random() - 0.5) * 0.05;
+      positions[i3 + 1] = y + (Math.random() - 0.5) * 0.05;
+      positions[i3 + 2] = z + (Math.random() - 0.5) * 0.05;
+      // Store normalized angle for color gradient
+      phases[i] = (theta % (Math.PI * 2)) / (Math.PI * 2);
       randoms[i] = Math.random();
-      phases[i] = Math.random();
     }
 
     return { positions, randoms, phases };

@@ -20,6 +20,8 @@ export default function ChatPanel() {
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [activeAgent, setActiveAgent] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocketClient | null>(null);
 
@@ -51,6 +53,8 @@ export default function ChatPanel() {
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, aiMessage]);
+        setIsTyping(false);
+        setActiveAgent(data.agent || "");
       } else if (data.type === "audio") {
         playAudioBase64(data.content);
       }
@@ -79,6 +83,7 @@ export default function ChatPanel() {
       content: input.trim(),
       auth_token: accessToken,
     });
+    setIsTyping(true);
     setInput("");
   }, [input, accessToken]);
 
@@ -111,6 +116,7 @@ export default function ChatPanel() {
           content: transcript,
           auth_token: accessToken,
         });
+        setIsTyping(true);
       }
     } finally {
       setIsListening(false);
@@ -134,6 +140,28 @@ export default function ChatPanel() {
         </div>
       </div>
 
+      {/* Connection Status Bar */}
+      <div className="px-4 py-2 border-b border-dark-600 flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+          <span className="text-[10px] font-mono text-gray-400">Google Calendar</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+          <span className="text-[10px] font-mono text-gray-400">Google Tasks</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+          <span className="text-[10px] font-mono text-gray-400">Gmail</span>
+        </div>
+        {isTyping && activeAgent && (
+          <div className="flex items-center gap-1 ml-auto">
+            <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
+            <span className="text-[10px] font-mono text-neon-purple">{activeAgent}</span>
+          </div>
+        )}
+      </div>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 chat-scroll">
         {messages.length === 0 && (
@@ -152,6 +180,23 @@ export default function ChatPanel() {
             timestamp={msg.timestamp}
           />
         ))}
+        {isTyping && (
+          <div className="flex justify-start mb-3">
+            <div className="bg-dark-700 border border-dark-600 rounded-2xl px-4 py-3">
+              <div className="text-xs text-neon-purple font-medium mb-1">
+                {activeAgent || "chronai"}
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="typing-dot" />
+                <span className="typing-dot animation-delay-200" />
+                <span className="typing-dot animation-delay-400" />
+                <span className="text-xs text-gray-400 ml-2">
+                  {activeAgent ? `${activeAgent} is thinking...` : "thinking..."}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 

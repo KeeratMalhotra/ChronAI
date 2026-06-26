@@ -1,0 +1,45 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Complete frontend UI overhaul - Particle system redesign (broken torus waveform), HUD labels, typing indicator, connection status panel, settings page, and dashboard layout improvements",
+  "status": "in_progress",
+  "steps": [
+    "PARTICLE SYSTEM REDESIGN - Update frontend/components/entity/ParticleSystem.tsx: Increase PARTICLE_COUNT to 6000. Change the position generation to create a torus/ring shape: for each particle, compute angle theta = (i / PARTICLE_COUNT) * 2*PI * tubeWindings, and phi = (i / PARTICLE_COUNT) * 2*PI. Base torus: majorRadius=2.0, tubeRadius=0.3. Add waveform distortion: tubeRadius += sin(theta*5)*0.15 + sin(theta*13)*0.08 + sin(theta*7)*0.1 to create the broken-sphere look. Add small random jitter (0.05). Store the angle 'theta' in the phases array for color gradient. Keep existing uniforms and mouse/audio logic.",
+    "VERTEX SHADER REDESIGN - Rewrite frontend/components/entity/shaders/vertex.glsl: Keep all existing uniforms and attributes. Change the idle animation to use undulation: displace particles along their torus normal direction using sin waves that evolve with uTime. For audio reactivity, increase the displacement amplitude dramatically (multiply by uAudioBass * 2.0 and uAudioFrequency * 1.5). Mouse interaction should be REPULSION not attraction: compute direction from mouse to particle, apply force that pushes particles AWAY when within a distance threshold (smoothstep from 2.0 to 0.0). Add breathing: subtle radius pulsing with sin(uTime * 0.8). Set gl_PointSize to (2.0 + aRandom * 1.5 + uAudioBass * 2.0) * (250.0 / -mvPosition.z) for smaller, sharper particles. Color: use aPhase (which stores the angle around torus) to create gradient from vec3(1.0, 0.0, 0.8) (magenta) to vec3(0.0, 0.9, 1.0) (cyan) using mix based on aPhase.",
+    "FRAGMENT SHADER REDESIGN - Rewrite frontend/components/entity/shaders/fragment.glsl: Make particles sharper and smaller. Use a tighter falloff: float dist = length(gl_PointCoord - 0.5); discard if dist > 0.45. Use sharp core: float intensity = smoothstep(0.45, 0.1, dist). Reduce the blur/glow. Keep additive blending support. The final color should be vColor * intensity with minimal white core (just 0.1 * core brightness).",
+    "BACKGROUND PARTICLES - Add a new component frontend/components/entity/BackgroundParticles.tsx: Create a separate <points> mesh with ~500 sparse particles distributed randomly in a large volume (radius 8-15). These move very slowly (drift). Use simple white/cyan color at very low opacity (0.1-0.2). Small point size (1-2px). Include in EntityCanvas.tsx alongside the main ParticleSystem.",
+    "ENTITY CANVAS UPDATE - Update frontend/components/entity/EntityCanvas.tsx: Import and render BackgroundParticles alongside ParticleSystem. Set Canvas background to transparent (already is). Adjust camera position if needed (position [0, 0, 6] for better torus framing).",
+    "HUD LABELS - Create frontend/components/entity/HudLabels.tsx: A React component (NOT inside Canvas) that overlays absolute-positioned text labels on the entity area. Top-left: 'AI AUDIO FEEDBACK: ACTIVE PULSING' (or IDLE). Top-right: 'PARTICLE CORE: Broken Circularity'. Bottom center: 'DEVELOPER VIEW: Three.js Particle Swarm (GLSL Modulated by Real-time Voice Data)'. Style: font-mono text-[10px] tracking-wider uppercase opacity-40 text-white/60 with subtle border border-white/5 px-2 py-1 backdrop-blur-sm bg-white/[0.02]. Accept an 'isActive' prop to toggle between ACTIVE PULSING/IDLE.",
+    "TYPING INDICATOR - Update frontend/components/chat/ChatPanel.tsx: Add 'isTyping' state (boolean) and 'activeAgent' state (string). Set isTyping=true when sending a message, set it false when receiving a response in the ws.on('message') handler. Extract agent name from response data.agent and set activeAgent. Show a typing indicator below the last message when isTyping is true: three animated dots with text like 'scheduler is thinking...' or 'ChronAI is thinking...' using the activeAgent state. Add CSS animation for the dots (use a TypingIndicator sub-component or inline).",
+    "CONNECTION STATUS BAR - Add a status/activity bar at the top of ChatPanel.tsx (inside the header area, below the existing header): Show connected services as small badges: 'Google Calendar checkmark', 'Google Tasks checkmark', 'Gmail checkmark'. Show currently active agent if isTyping is true. Style: text-[10px] font-mono, green dot for connected services, subtle separator.",
+    "SETTINGS PAGE - Create frontend/app/settings/page.tsx: A full settings page with: 1) User profile section (name, email, avatar from session), 2) Connected Services section showing Google Calendar/Tasks/Gmail with green 'Connected' badges, 3) Preferences section with working hours (start/end time inputs), notification preferences (toggles for gentle/urgent/critical), theme (dark only, grayed out). Style with the dark theme. Add a back button/link to /dashboard at the top. Mark this as a protected page (wrap with session check or add to middleware matcher).",
+    "DASHBOARD LAYOUT - Update frontend/app/dashboard/page.tsx: Add a top navigation bar with: ChronAI text logo (left), user avatar circle (top-right, from session), settings gear icon (links to /settings). The entity area should be flex-1 with the HudLabels overlay. Chat panel stays as 400px sidebar on right. Background: gradient from-[#0a0e1a] via-[#0f1629] to-[#0a0e1a]. Import and use HudLabels component overlaid on the entity area.",
+    "GLOBAL STYLES UPDATE - Update frontend/app/globals.css: Add the typing-dots keyframe animation. Ensure body background matches the deep navy gradient. Add utility classes for the HUD label styling if needed.",
+    "UPDATE MIDDLEWARE - Update frontend/middleware.ts: Add '/settings' to the protected routes matcher so it also requires authentication.",
+    "TAILWIND CONFIG - Update frontend/tailwind.config.ts if needed: Add any new animation keyframes (typing-dots). Ensure the color palette includes the deep navy shades."
+  ],
+  "acceptance_criteria": [
+    "pnpm build passes successfully with no TypeScript errors",
+    "ParticleSystem uses torus geometry with waveform distortion and 6000 particles",
+    "Vertex shader implements repulsion-based mouse interaction (not attraction)",
+    "Fragment shader produces sharp, distinct particles with minimal blur",
+    "BackgroundParticles.tsx exists and is rendered in EntityCanvas",
+    "HudLabels.tsx exists with the three specified text labels",
+    "ChatPanel has isTyping state, typing indicator with animated dots, and agent name display",
+    "Connection status badges appear in chat header",
+    "Settings page exists at frontend/app/settings/page.tsx with profile, services, and preferences sections",
+    "Dashboard has top nav bar with logo, avatar, and settings gear icon",
+    "Middleware protects /settings route",
+    "Color gradient in vertex shader goes from magenta (1.0, 0.0, 0.8) to cyan (0.0, 0.9, 1.0)"
+  ],
+  "verification": [
+    "Run: cd /projects/sandbox/ChronAI/frontend && pnpm build - must complete with exit code 0",
+    "Verify particle count: grep -n 'PARTICLE_COUNT\\|6000' components/entity/ParticleSystem.tsx",
+    "Verify torus geometry in ParticleSystem.tsx",
+    "Verify settings page exists: ls app/settings/page.tsx",
+    "Verify HudLabels exists: ls components/entity/HudLabels.tsx",
+    "Verify BackgroundParticles exists: ls components/entity/BackgroundParticles.tsx"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
