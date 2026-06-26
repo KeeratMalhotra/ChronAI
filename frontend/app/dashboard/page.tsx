@@ -21,12 +21,16 @@ export default function DashboardPage() {
     ((session as Record<string, unknown> | null)?.accessToken as string) || "";
   const user = session?.user;
 
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+
   // Onboarding gate: redirect to /onboarding if profile is not complete
   useEffect(() => {
     if (status !== "authenticated" || !accessToken) return;
     fetchOnboardingStatus(accessToken).then((data) => {
       if (!data.complete) {
         router.push("/onboarding");
+      } else {
+        setOnboardingChecked(true);
       }
     });
   }, [status, accessToken, router]);
@@ -37,6 +41,15 @@ export default function DashboardPage() {
   const openPanel = (key: PanelKey) =>
     setActivePanel((cur) => (cur === key ? null : key));
   const close = () => setActivePanel(null);
+
+  // Show loading state until onboarding check resolves
+  if (status === "loading" || (status === "authenticated" && !onboardingChecked)) {
+    return (
+      <main className="relative flex h-screen w-screen items-center justify-center bg-base-950">
+        <div className="text-sm text-white/50">Loading...</div>
+      </main>
+    );
+  }
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-base-950">

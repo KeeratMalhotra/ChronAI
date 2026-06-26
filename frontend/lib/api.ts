@@ -90,17 +90,16 @@ export async function postOnboarding(
   authToken: string,
   profile: object
 ): Promise<void> {
-  if (!authToken) return;
-  try {
-    await fetch(
-      `${getApiBase()}/api/onboarding?auth_token=${encodeURIComponent(authToken)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
-      }
-    );
-  } catch {
-    // silently fail
+  if (!authToken) throw new Error("No auth token provided");
+  const res = await fetch(
+    `${getApiBase()}/api/onboarding?auth_token=${encodeURIComponent(authToken)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profile),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Onboarding save failed (${res.status})`);
   }
 }

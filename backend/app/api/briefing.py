@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Header, Query, status
+from fastapi import APIRouter, HTTPException, Header, Query, Request, status
 
 from app.auth import verify_google_token
 from app.agents.briefing import generate_daily_briefing
@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api", tags=["briefing"])
 
 @router.get("/briefing")
 async def get_daily_briefing(
+    request: Request,
     auth_token: Optional[str] = Query(default=None),
     authorization: Optional[str] = Header(default=None),
 ):
@@ -34,8 +35,8 @@ async def get_daily_briefing(
     user_info = await verify_google_token(token)
     user_id = user_info["sub"]
 
-    # Import mcp_client from main module
-    from app.main import mcp_client
+    # Access mcp_client from app state (set during lifespan startup)
+    mcp_client = getattr(request.app.state, "mcp_client", None)
 
     briefing = await generate_daily_briefing(user_id, token, mcp_client)
     return {"briefing": briefing}

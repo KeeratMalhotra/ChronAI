@@ -70,6 +70,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // Form state
   const [role, setRole] = useState("");
@@ -102,22 +103,30 @@ export default function OnboardingPage() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    await postOnboarding(accessToken, {
-      role,
-      occupation,
-      work_hours_start: workStart,
-      work_hours_end: workEnd,
-      wake_time: wakeTime,
-      sleep_time: sleepTime,
-      daily_routine: dailyRoutine,
-      priorities,
-      goals: goals
-        .split("\n")
-        .map((g) => g.trim())
-        .filter(Boolean),
-      onboarding_complete: true,
-    });
-    router.push("/dashboard");
+    setSubmitError("");
+    try {
+      await postOnboarding(accessToken, {
+        role,
+        occupation,
+        work_hours_start: workStart,
+        work_hours_end: workEnd,
+        wake_time: wakeTime,
+        sleep_time: sleepTime,
+        daily_routine: dailyRoutine,
+        priorities,
+        goals: goals
+          .split("\n")
+          .map((g) => g.trim())
+          .filter(Boolean),
+        onboarding_complete: true,
+      });
+      router.push("/dashboard");
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Failed to save profile. Please try again."
+      );
+      setSubmitting(false);
+    }
   };
 
   /* ---------------------------------------------------------------- */
@@ -342,6 +351,9 @@ export default function OnboardingPage() {
         <Sparkles className="h-4 w-4" />
         {submitting ? "Setting up..." : "Start using ChronAI"}
       </button>
+      {submitError && (
+        <p className="mt-3 text-center text-sm text-red-400">{submitError}</p>
+      )}
     </div>
   );
 

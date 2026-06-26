@@ -1,11 +1,9 @@
 """Daily briefing generator - personalized morning briefing using Gemini."""
 
 import logging
-from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import vertexai
 import vertexai.generative_models
 
 from app.config import settings
@@ -108,7 +106,6 @@ Guidelines:
 
     # Use Gemini to generate the briefing
     try:
-        vertexai.init(project=settings.GCP_PROJECT_ID, location=settings.GCP_REGION)
         model = vertexai.generative_models.GenerativeModel(settings.GEMINI_MODEL)
         response = model.generate_content(prompt)
         return response.text

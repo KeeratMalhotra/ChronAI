@@ -78,6 +78,9 @@ async def lifespan(app: FastAPI):
     mcp_client = MCPClient()
     await mcp_client.start()
 
+    # Store mcp_client on app state for dependency injection
+    app.state.mcp_client = mcp_client
+
     # Connect to MCP servers (they run as subprocesses)
     try:
         await mcp_client.connect_server(
