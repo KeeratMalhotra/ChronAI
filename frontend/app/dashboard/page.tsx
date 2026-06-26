@@ -85,7 +85,7 @@ export default function DashboardPage() {
         accessToken={accessToken}
       />
       <ScheduleDrawer open={activePanel === "schedule"} onClose={close} />
-      <HabitsDrawer open={activePanel === "habits"} onClose={close} />
+      <HabitsDrawer open={activePanel === "habits"} onClose={close} accessToken={accessToken} />
     </main>
   );
 }

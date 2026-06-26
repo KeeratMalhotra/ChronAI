@@ -139,6 +139,101 @@ export async function deleteCalendarEvent(
   }
 }
 
+// --- Habits ---
+
+export interface HabitHistoryEntry {
+  completed_at: string;
+}
+
+export interface HabitItem {
+  id: string;
+  name: string;
+  frequency: string;
+  target_days: number;
+  streak: number;
+  last_completed: string | null;
+  history: HabitHistoryEntry[];
+}
+
+export interface WeeklyReview {
+  content: string;
+}
+
+export async function fetchHabits(authToken: string): Promise<HabitItem[]> {
+  if (!authToken) return [];
+  const data = await safeGet<{ habits: HabitItem[] }>(
+    `/api/habits?auth_token=${encodeURIComponent(authToken)}`,
+    { habits: [] }
+  );
+  return Array.isArray(data.habits) ? data.habits : [];
+}
+
+export async function checkinHabit(
+  authToken: string,
+  habitId: string
+): Promise<HabitItem> {
+  if (!authToken) throw new Error("No auth token provided");
+  const res = await fetch(`${getApiBase()}/api/habits/checkin`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ auth_token: authToken, habit_id: habitId }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to check in habit (${res.status})`);
+  }
+  const json = await res.json();
+  return json.habit as HabitItem;
+}
+
+export async function createHabit(
+  authToken: string,
+  name: string,
+  frequency: string,
+  targetDays: number
+): Promise<HabitItem> {
+  if (!authToken) throw new Error("No auth token provided");
+  const res = await fetch(`${getApiBase()}/api/habits`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      auth_token: authToken,
+      name,
+      frequency,
+      target_days: targetDays,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to create habit (${res.status})`);
+  }
+  const json = await res.json();
+  return json.habit as HabitItem;
+}
+
+export async function deleteHabit(
+  authToken: string,
+  habitId: string
+): Promise<void> {
+  if (!authToken) throw new Error("No auth token provided");
+  const res = await fetch(
+    `${getApiBase()}/api/habits/${encodeURIComponent(habitId)}?auth_token=${encodeURIComponent(authToken)}`,
+    { method: "DELETE" }
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to delete habit (${res.status})`);
+  }
+}
+
+export async function fetchWeeklyReview(
+  authToken: string
+): Promise<WeeklyReview> {
+  if (!authToken) return { content: "" };
+  const data = await safeGet<{ review: string }>(
+    `/api/review/weekly?auth_token=${encodeURIComponent(authToken)}`,
+    { review: "" }
+  );
+  return { content: data.review || "" };
+}
+
 export async function checkTokenScopes(accessToken: string): Promise<string> {
   try {
     const res = await fetch(

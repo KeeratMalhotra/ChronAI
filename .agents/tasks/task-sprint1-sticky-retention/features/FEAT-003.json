@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Frontend: Replace HabitsDrawer with real data, add API helpers for habits/review, streak ring SVG, check-in animation, add-habit form",
+  "status": "in_progress",
+  "steps": [
+    "1. Update frontend/lib/api.ts: add interfaces HabitItem (id, name, frequency, target_days, streak, last_completed, history), WeeklyReview (content: string). Add API functions: fetchHabits(authToken) -> GET /api/habits, checkinHabit(authToken, habitId) -> POST /api/habits/checkin, createHabit(authToken, name, frequency, targetDays) -> POST /api/habits, deleteHabit(authToken, habitId) -> DELETE /api/habits/{id}, fetchWeeklyReview(authToken) -> GET /api/review/weekly.",
+    "2. Rewrite frontend/components/drawers/HabitsDrawer.tsx completely: remove hardcoded HABITS array, fetch real habits from API using useEffect+useState. Show each habit with: name, streak (flame icon + number), 7-day completion dots (derive from history array - check which of last 7 days have a completion entry). Add SVG streak ring showing weekly completion rate (completions_this_week / target_days as percentage, circular progress). Add check-in button per habit that calls checkinHabit API. Add framer-motion animation on check-in (scale pulse + color flash). Add inline add-habit form at bottom with name input + frequency selector (daily / 2x-7x per week dropdown). Use existing Drawer component as wrapper.",
+    "3. Ensure TypeScript types are correct and pnpm build passes. The component should handle loading state and empty state gracefully.",
+    "4. Verify: cd /projects/sandbox/ChronAI/frontend && pnpm build passes without errors"
+  ],
+  "acceptance_criteria": [
+    "pnpm build passes with the new HabitsDrawer component",
+    "HabitsDrawer fetches real habits from /api/habits (no hardcoded data)",
+    "Each habit shows streak with flame icon, 7-day dots, and SVG streak ring",
+    "Check-in button calls API and shows framer-motion animation",
+    "Add-habit form allows creating new habits with name + frequency",
+    "API helpers (fetchHabits, checkinHabit, createHabit, deleteHabit, fetchWeeklyReview) exist in lib/api.ts"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && pnpm build"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
