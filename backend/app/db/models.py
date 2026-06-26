@@ -55,6 +55,7 @@ class Habit(BaseModel):
     user_id: str = ""
     name: str = ""
     frequency: str = "daily"
+    target_days: int = 7
     streak: int = 0
     last_completed: Optional[datetime] = None
     history: list = Field(default_factory=list)

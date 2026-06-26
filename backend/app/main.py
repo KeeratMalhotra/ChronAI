@@ -21,11 +21,14 @@ from app.agents.scheduler import SchedulerAgent
 from app.agents.notification import NotificationAgent
 from app.agents.voice import VoiceAgent
 from app.agents.email import EmailAgent
+from app.agents.habits import HabitAgent
 from app.api.onboarding import router as onboarding_router
 from app.api.briefing import router as briefing_router
 from app.auth import verify_google_token
 from app.config import settings
 from app.db.firestore import init_firestore
+from app.db.repositories import HabitRepository
+from app.db.models import Habit
 from app.mcp.client import MCPClient
 from app.scheduler.proactive import start_proactive_scheduler, stop_proactive_scheduler, run_nudge_check
 from app.ws_manager import connection_manager
@@ -142,6 +145,7 @@ async def lifespan(app: FastAPI):
     NotificationAgent(mcp_client=mcp_client)
     VoiceAgent(mcp_client=mcp_client)
     EmailAgent(mcp_client=mcp_client)
+    HabitAgent(mcp_client=mcp_client)
 
     # Start proactive scheduler
     _scheduler_task = start_proactive_scheduler(connection_manager)
@@ -531,6 +535,134 @@ async def delete_calendar_event(event_id: str, auth_token: str = ""):
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail="MCP client not available",
     )
+
+
+class CreateHabitRequest(BaseModel):
+    """Request body for creating a habit."""
+    auth_token: str
+    name: str
+    frequency: str = "daily"
+    target_days: int = 7
+
+
+class HabitCheckinRequest(BaseModel):
+    """Request body for checking in to a habit."""
+    auth_token: str
+    habit_id: str
+
+
+@app.get("/api/habits")
+async def get_habits(auth_token: str = ""):
+    """Get user's habits.
+
+    Args:
+        auth_token: Google OAuth token for authentication.
+
+    Returns:
+        List of habits for the user.
+    """
+    if not auth_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    user = await verify_google_token(auth_token)
+    user_id = user.get("sub", "")
+
+    habits = await HabitRepository.list_by_user(user_id)
+    return {"habits": [h.model_dump() for h in habits]}
+
+
+@app.post("/api/habits")
+async def create_habit(body: CreateHabitRequest):
+    """Create a new habit.
+
+    Args:
+        body: Validated JSON body with auth_token, name, frequency, target_days.
+
+    Returns:
+        The created habit.
+    """
+    if not body.auth_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    user = await verify_google_token(body.auth_token)
+    user_id = user.get("sub", "")
+
+    habit = Habit(
+        user_id=user_id,
+        name=body.name,
+        frequency=body.frequency,
+        target_days=body.target_days,
+    )
+    created = await HabitRepository.create(habit)
+    return {"habit": created.model_dump()}
+
+
+@app.post("/api/habits/checkin")
+async def checkin_habit(body: HabitCheckinRequest):
+    """Record a habit check-in.
+
+    Args:
+        body: Validated JSON body with auth_token and habit_id.
+
+    Returns:
+        Updated habit with new streak count.
+    """
+    if not body.auth_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    await verify_google_token(body.auth_token)
+
+    habit = await HabitRepository.get_by_id(body.habit_id)
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found",
+        )
+
+    await HabitRepository.record_completion(body.habit_id)
+
+    # Fetch the updated habit
+    updated = await HabitRepository.get_by_id(body.habit_id)
+    return {"habit": updated.model_dump() if updated else habit.model_dump()}
+
+
+@app.delete("/api/habits/{habit_id}")
+async def delete_habit(habit_id: str, auth_token: str = ""):
+    """Delete a habit.
+
+    Args:
+        habit_id: The ID of the habit to delete.
+        auth_token: Google OAuth token for authentication.
+
+    Returns:
+        Status indicating deletion success.
+    """
+    if not auth_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    await verify_google_token(auth_token)
+
+    habit = await HabitRepository.get_by_id(habit_id)
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found",
+        )
+
+    await HabitRepository.delete(habit_id)
+    return {"status": "deleted"}
 
 
 @app.get("/health")

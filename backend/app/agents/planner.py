@@ -32,10 +32,13 @@ ACTION SELECTION RULES (read carefully - this is critical):
   Examples of READ: "what tasks do I have today?", "show my tasks", "list my todos", "do I have anything due?", "what's on my to-do list?", "any tasks for me?", "what do I need to do today?"
 - WRITE intent -> action: "create_tasks". The user explicitly wants to ADD or CREATE something, or asks you to break a goal into steps. Also triggered when the user STATES they have a deadline or deliverable (implicit write).
   Examples of WRITE: "add a task to call the dentist", "create a task: finish report by Friday", "remind me to buy milk", "help me plan a launch party", "I need to prepare for the interview", "I have a deadline Friday", "I have a report due next week", "there's a submission deadline on Monday"
+- COMPLETE intent -> action: "complete_task". The user says they finished, completed, or are done with a task. The instruction starts with "complete_task:" or the user says "I finished X", "done with X", "mark X as done", "completed X".
+  Examples of COMPLETE: "I finished the report", "done with buying groceries", "mark the dentist call as done", "completed the code review", "complete_task: buy milk"
 - When the user only wants to look at existing tasks, ALWAYS choose "list_tasks". Creating junk tasks for a read request is a serious error.
 - When the user STATES they have a deadline or deliverable ("I have X due by Y", "there's a deadline on Y") -> action: "create_tasks". This IS a create request even though they didn't say "create" or "add". Create a single task with the appropriate deadline.
 - For "create_tasks", create ONLY the tasks the user actually asked for. A single simple request = a single task. Only decompose into multiple subtasks when the user gives a broad goal that genuinely needs a plan. Never spam many tasks for a simple query.
 - If the instruction starts with "Create task:" -> action: "create_tasks". Extract the title and deadline from the instruction.
+- If the instruction starts with "complete_task:" -> action: "complete_task". Extract the task name from after the colon.
 
 DEADLINE CLARIFICATION RULE:
 - A simple errand with no implied urgency does NOT need a deadline. e.g. "add a task to call mom" -> just create it (the system picks a sensible default). Do NOT ask for a deadline here.
@@ -52,8 +55,9 @@ When action is "needs_info", respond with:
 
 Otherwise respond with a JSON object:
 {
-  "action": "list_tasks" | "create_tasks",
+  "action": "list_tasks" | "create_tasks" | "complete_task",
   "plan_summary": "brief description of the plan (create_tasks only)",
+  "task_name": "name of task to complete (complete_task only)",
   "tasks": [
     {
       "title": "task title",
@@ -138,6 +142,15 @@ class PlannerAgent(AgentBase):
                 "tasks": tasks,
                 "pending_action": None,
             }
+
+        # COMPLETE intent: mark a task as done.
+        if action == "complete_task":
+            task_name = plan.get("task_name", "")
+            if not task_name:
+                # Try to extract from the message itself
+                task_name = message.replace("complete_task:", "").strip()
+            result = await self._complete_task(auth_token, task_name)
+            return result
 
         # WRITE intent: create the requested task(s).
         created_tasks = []
@@ -360,3 +373,84 @@ contain a usable deadline, return action "needs_info" again."""
             return result if isinstance(result, list) else []
         except Exception:
             return []
+
+    async def _complete_task(self, auth_token: str, task_name: str) -> dict:
+        """Mark a task as completed by finding it by name and calling MCP.
+
+        Lists all tasks, finds the best match for the given name, then
+        calls the complete_task MCP tool.
+
+        Args:
+            auth_token: Google OAuth token for API access.
+            task_name: The name/title of the task to complete.
+
+        Returns:
+            Response dict with confirmation or error message.
+        """
+        if not task_name:
+            return {
+                "content": "Which task did you complete? Let me know the name.",
+                "agent": self.name,
+                "action": "complete_task",
+                "tasks": [],
+                "pending_action": None,
+            }
+
+        # List tasks to find the matching one
+        tasks = await self.list_tasks(auth_token)
+        if not tasks:
+            return {
+                "content": "I couldn't find any tasks to complete. Your task list appears to be empty.",
+                "agent": self.name,
+                "action": "complete_task",
+                "tasks": [],
+                "pending_action": None,
+            }
+
+        # Find the best matching task (case-insensitive substring match)
+        task_name_lower = task_name.lower()
+        matched_task = None
+        for t in tasks:
+            if not isinstance(t, dict):
+                continue
+            title = t.get("title", "")
+            if title.lower() == task_name_lower:
+                matched_task = t
+                break
+            if task_name_lower in title.lower():
+                matched_task = t
+
+        if not matched_task:
+            return {
+                "content": f"I couldn't find a task matching '{task_name}'. Check your task list and try again.",
+                "agent": self.name,
+                "action": "complete_task",
+                "tasks": [],
+                "pending_action": None,
+            }
+
+        # Call MCP complete_task tool
+        task_id = matched_task.get("id", "")
+        try:
+            await self.call_mcp_tool(
+                "google-tasks",
+                "complete_task",
+                {"auth_token": auth_token, "task_id": task_id},
+            )
+            task_title = matched_task.get("title", task_name)
+            return {
+                "content": f"Done! Marked '{task_title}' as completed. Nice work!",
+                "agent": self.name,
+                "action": "complete_task",
+                "tasks": [],
+                "pending_action": None,
+            }
+        except Exception as e:
+            logger.error(f"[planner] Failed to complete task: {e}")
+            return {
+                "content": f"I found the task '{matched_task.get('title', task_name)}' but couldn't mark it as complete. Please try again.",
+                "agent": self.name,
+                "action": "complete_task",
+                "tasks": [],
+                "pending_action": None,
+            }

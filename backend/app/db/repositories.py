@@ -296,6 +296,37 @@ class HabitRepository:
                 }
             )
 
+    @classmethod
+    async def delete(cls, habit_id: str) -> None:
+        """Delete a habit document.
+
+        Args:
+            habit_id: The Firestore document ID.
+        """
+        db = get_db()
+        await db.collection(cls.COLLECTION).document(habit_id).delete()
+
+    @classmethod
+    async def get_by_name_and_user(cls, name: str, user_id: str) -> Optional[Habit]:
+        """Find a habit by name for a given user (case-insensitive substring match).
+
+        Args:
+            name: The habit name (or partial name) to search for.
+            user_id: The user's ID.
+
+        Returns:
+            The first matching Habit instance, or None if not found.
+        """
+        db = get_db()
+        query = db.collection(cls.COLLECTION).where("user_id", "==", user_id)
+        name_lower = name.lower()
+        async for doc in query.stream():
+            data = doc.to_dict()
+            if name_lower in data.get("name", "").lower():
+                data["id"] = doc.id
+                return Habit(**data)
+        return None
+
 
 class ConversationRepository:
     """Repository for Conversation documents in the 'conversations' collection."""

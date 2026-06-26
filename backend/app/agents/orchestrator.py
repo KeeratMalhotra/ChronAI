@@ -26,6 +26,7 @@ CRITICAL RULE: When in doubt, ALWAYS route to an agent. Prefer routing over dire
 Available agents:
 - scheduler: Manages calendar events, finds time slots, checks schedules, books meetings
 - planner: Breaks goals into subtasks, manages task lists, tracks deadlines, organizes projects
+- habits: Tracks habits, streaks, and daily check-ins for building routines
 - notification: Generates reminders, sets alerts, sends nudges, proactive suggestions
 - voice: Converts text to speech
 - email: Drafts emails, summarizes inbox, sends messages, manages drafts
@@ -33,11 +34,13 @@ Available agents:
 ROUTING RULES (follow these strictly):
 1. ANY mention of calendar, events, meetings, schedule, availability, "what's on", time slots, appointments -> route to "scheduler"
 2. ANY mention of tasks, goals, deadlines, projects, to-do, to do, plans, priorities, objectives -> route to "planner"
-3. ANY mention of reminders, notifications, nudges, alerts, "remind me", "don't forget" -> route to "notification"
-4. ANY mention of email, drafts, messages, send, inbox, compose, reply -> route to "email"
-5. Questions ABOUT calendar/tasks/emails (e.g. "What's on my calendar?", "Do I have any tasks?") ARE routed, not answered directly.
-6. ONLY use direct_response for pure small talk: greetings ("hello", "hi", "hey"), thanks ("thank you", "thanks"), meta questions ("who are you", "what can you do", "what is ChronAI").
-7. When the user STATES they have an event/meeting/appointment ("I have X at Y", "there's X at Y") -> route to "scheduler" with instruction "Create event: [title], [time]". This IS a create request even though they didn't say "create" or "schedule".
+3. ANY mention of habits, streak, check in, "went to gym", "done with X habit", "how are my habits", "track habit", "start tracking" -> route to "habits"
+4. ANY mention of completing/finishing a task: "I'm done with X", "finished X", "completed X", "mark X as done" (referring to a Google Task, not a habit) -> route to "planner" with instruction including "complete_task:"
+5. ANY mention of reminders, notifications, nudges, alerts, "remind me", "don't forget" -> route to "notification"
+6. ANY mention of email, drafts, messages, send, inbox, compose, reply -> route to "email"
+7. Questions ABOUT calendar/tasks/emails (e.g. "What's on my calendar?", "Do I have any tasks?") ARE routed, not answered directly.
+8. ONLY use direct_response for pure small talk: greetings ("hello", "hi", "hey"), thanks ("thank you", "thanks"), meta questions ("who are you", "what can you do", "what is ChronAI").
+9. When the user STATES they have an event/meeting/appointment ("I have X at Y", "there's X at Y") -> route to "scheduler" with instruction "Create event: [title], [time]". This IS a create request even though they didn't say "create" or "schedule".
 
 EXAMPLES of correct routing:
 - "What's on my calendar?" -> scheduler with instruction "List the user's calendar events for this week"
@@ -54,6 +57,11 @@ EXAMPLES of correct routing:
 - "Move my 4pm meeting to 5pm" -> scheduler with instruction "Reschedule: move the 4pm event to 5pm today"
 - "Cancel my dentist appointment" -> scheduler with instruction "Delete event: dentist appointment"
 - "Delete the standup tomorrow" -> scheduler with instruction "Delete event: standup tomorrow"
+- "How are my habits?" -> habits with instruction "List user's habits and streaks"
+- "I went to the gym today" -> habits with instruction "Check in for gym habit"
+- "Start tracking meditation" -> habits with instruction "Create habit: meditation"
+- "I finished the report task" -> planner with instruction "complete_task: report"
+- "Mark buy groceries as done" -> planner with instruction "complete_task: buy groceries"
 - "Hello!" -> direct_response: "Hey! I'm ChronAI, your AI productivity assistant. I can help you manage your calendar, tasks, emails, and reminders. What would you like to do?"
 
 Respond with a JSON object:
@@ -424,6 +432,7 @@ Respond with JSON: {{"resolution": "answer"}} or {{"resolution": "new_topic"}}."
         return {
             "scheduler": "Checking your calendar...",
             "planner": "Organizing your tasks...",
+            "habits": "Checking your habits...",
             "notification": "Reviewing your reminders...",
             "email": "Looking through your email...",
             "voice": "Preparing a voice response...",

@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Habit Tracking System - Backend: HabitAgent, routes, orchestrator integration, and Task Completion via Chat (planner update)",
+  "status": "in_progress",
+  "steps": [
+    "1. Update backend/app/db/models.py: add target_days field (int, default 7) to Habit model for frequency tracking",
+    "2. Update backend/app/db/repositories.py: add delete method to HabitRepository, and a get_by_name_and_user method for fuzzy matching habits by name",
+    "3. Create backend/app/agents/habits.py - HabitAgent inheriting from AgentBase with: name='habits', actions: create_habit, list_habits, check_in, delete_habit. Uses self.generate() with a HABIT_PROMPT to classify user intent. Streak logic: consecutive days meeting goal resets on miss unless frequency allows gaps. Uses HabitRepository. Uses timectx for IST timezone.",
+    "4. Update backend/app/agents/orchestrator.py SYSTEM_PROMPT: add 'habits' to Available agents list with description, add routing rules for habit-related phrases ('habits', 'streak', 'check in', 'went to gym', 'done with X habit', 'how are my habits') to route to habits agent. Also add routing for completion phrases ('I'm done with X', 'finished X', 'completed X', 'mark X as done') to route to planner.",
+    "5. Update backend/app/agents/planner.py PLANNER_PROMPT: add 'complete_task' action to ACTION SELECTION RULES. When user says 'I finished X' / 'done with X' / 'mark X as done' -> action: 'complete_task'. The execute() method handles this action by listing tasks, finding the matching one, calling complete_task MCP tool, and returning a satisfying confirmation message.",
+    "6. Update backend/app/main.py: import and register HabitAgent in lifespan (after other agents). Add routes: GET /api/habits?auth_token=... and POST /api/habits/checkin (body: {auth_token, habit_id}). Add POST /api/habits (body: {auth_token, name, frequency, target_days}) for creating habits from frontend. Add DELETE /api/habits/{habit_id}?auth_token=...",
+    "7. Add backend/tests/test_habits.py: test HabitAgent create, list, check_in, delete actions using mock pattern from test_agents.py. Test planner complete_task action. At least 5 test cases covering: create habit, list habits, check-in (streak increment), delete habit, planner complete_task.",
+    "8. Verify: python -c 'import app.main' passes, python -m pytest tests/ -v passes with new tests"
+  ],
+  "acceptance_criteria": [
+    "python -c 'import app.main' passes with HabitAgent registered",
+    "GET /api/habits returns habits for a user",
+    "POST /api/habits creates a new habit",
+    "POST /api/habits/checkin records completion and updates streak",
+    "DELETE /api/habits/{id} removes a habit",
+    "Orchestrator routes habit-related phrases to habits agent",
+    "Orchestrator routes completion phrases to planner",
+    "Planner handles complete_task action by calling MCP complete_task tool",
+    "python -m pytest tests/ -v passes including new test_habits.py tests"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/backend && python -c 'import app.main'",
+    "cd /projects/sandbox/ChronAI/backend && python -m pytest tests/ -v"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
