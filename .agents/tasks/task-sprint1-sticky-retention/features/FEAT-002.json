@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Proactive Email Notifications and Weekly Review (Backend): email fallback in proactive scheduler + notification preferences + weekly review agent and route",
+  "status": "in_progress",
+  "steps": [
+    "1. Update backend/app/db/models.py: add notification_preferences dict to User model (default: {email_notifications: True, email_for_urgent_only: False}). This controls whether the proactive scheduler emails the user.",
+    "2. Update backend/app/scheduler/proactive.py - in _check_user_deadlines: after generating the nudge and checking if user is NOT connected via WebSocket (manager.is_connected(user_id) == False), send the nudge as a Gmail email using direct Gmail API (pattern from email agent's _send_email). Get user's google_tokens from UserRepository, use refresh token to get fresh access token via google.oauth2.credentials.Credentials with refresh. Create HTML email with ChronAI branding, nudge message, and 'Open ChronAI' button. Respect notification_preferences: skip if email_notifications=False, skip non-urgent if email_for_urgent_only=True.",
+    "3. Create backend/app/agents/review.py - generate_weekly_review(user_id, auth_token, mcp_client) async function: fetches last 7 days of calendar events (via MCP google-calendar list_events), completed tasks (via MCP google-tasks list_tasks with show_completed=True), habit check-ins (via HabitRepository). Uses Gemini to generate personalized review with: tasks completed vs total, meetings count, habit streaks/misses, productivity score, suggestion for next week. Returns markdown-formatted text.",
+    "4. Create a ReviewAgent class in backend/app/agents/review.py that inherits AgentBase, name='review'. Its execute() method calls generate_weekly_review and returns the result.",
+    "5. Add route GET /api/review/weekly?auth_token=... in backend/app/main.py that calls generate_weekly_review and returns the markdown text.",
+    "6. Update backend/app/agents/orchestrator.py SYSTEM_PROMPT: add 'review' to Available agents, add routing rules for 'weekly review' / 'how was my week' / 'productivity report' / 'weekly summary' to route to review agent.",
+    "7. Register ReviewAgent in backend/app/main.py lifespan.",
+    "8. Add backend/tests/test_review.py: test generate_weekly_review with mocked MCP and Gemini. Test proactive email sending logic (mock gmail send, test that email is sent when user is disconnected and preferences allow it). At least 4 test cases.",
+    "9. Verify: python -c 'import app.main' passes, python -m pytest tests/ -v passes"
+  ],
+  "acceptance_criteria": [
+    "python -c 'import app.main' passes with ReviewAgent registered",
+    "Proactive scheduler sends email when user is offline (not connected via WS)",
+    "Email respects notification_preferences (email_for_urgent_only logic)",
+    "GET /api/review/weekly returns weekly review markdown",
+    "Orchestrator routes 'how was my week' to review agent",
+    "python -m pytest tests/ -v passes including new tests"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/backend && python -c 'import app.main'",
+    "cd /projects/sandbox/ChronAI/backend && python -m pytest tests/ -v"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

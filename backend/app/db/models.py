@@ -29,6 +29,9 @@ class User(BaseModel):
     name: str = ""
     google_tokens: dict = Field(default_factory=dict)
     preferences: dict = Field(default_factory=dict)
+    notification_preferences: dict = Field(
+        default_factory=lambda: {"email_notifications": True, "email_for_urgent_only": False}
+    )
     profile: UserProfile = Field(default_factory=UserProfile)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

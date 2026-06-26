@@ -30,6 +30,7 @@ Available agents:
 - notification: Generates reminders, sets alerts, sends nudges, proactive suggestions
 - voice: Converts text to speech
 - email: Drafts emails, summarizes inbox, sends messages, manages drafts
+- review: Generates weekly productivity reviews and summaries
 
 ROUTING RULES (follow these strictly):
 1. ANY mention of calendar, events, meetings, schedule, availability, "what's on", time slots, appointments -> route to "scheduler"
@@ -38,9 +39,10 @@ ROUTING RULES (follow these strictly):
 4. ANY mention of completing/finishing a task: "I'm done with X", "finished X", "completed X", "mark X as done" (referring to a Google Task, not a habit) -> route to "planner" with instruction including "complete_task:"
 5. ANY mention of reminders, notifications, nudges, alerts, "remind me", "don't forget" -> route to "notification"
 6. ANY mention of email, drafts, messages, send, inbox, compose, reply -> route to "email"
-7. Questions ABOUT calendar/tasks/emails (e.g. "What's on my calendar?", "Do I have any tasks?") ARE routed, not answered directly.
-8. ONLY use direct_response for pure small talk: greetings ("hello", "hi", "hey"), thanks ("thank you", "thanks"), meta questions ("who are you", "what can you do", "what is ChronAI").
-9. When the user STATES they have an event/meeting/appointment ("I have X at Y", "there's X at Y") -> route to "scheduler" with instruction "Create event: [title], [time]". This IS a create request even though they didn't say "create" or "schedule".
+7. ANY mention of weekly review, productivity report, weekly summary, "how was my week", "how did my week go", "review my week" -> route to "review"
+8. Questions ABOUT calendar/tasks/emails (e.g. "What's on my calendar?", "Do I have any tasks?") ARE routed, not answered directly.
+9. ONLY use direct_response for pure small talk: greetings ("hello", "hi", "hey"), thanks ("thank you", "thanks"), meta questions ("who are you", "what can you do", "what is ChronAI").
+10. When the user STATES they have an event/meeting/appointment ("I have X at Y", "there's X at Y") -> route to "scheduler" with instruction "Create event: [title], [time]". This IS a create request even though they didn't say "create" or "schedule".
 
 EXAMPLES of correct routing:
 - "What's on my calendar?" -> scheduler with instruction "List the user's calendar events for this week"
@@ -62,6 +64,9 @@ EXAMPLES of correct routing:
 - "Start tracking meditation" -> habits with instruction "Create habit: meditation"
 - "I finished the report task" -> planner with instruction "complete_task: report"
 - "Mark buy groceries as done" -> planner with instruction "complete_task: buy groceries"
+- "How was my week?" -> review with instruction "Generate weekly productivity review"
+- "Give me a weekly summary" -> review with instruction "Generate weekly productivity review"
+- "Show my productivity report" -> review with instruction "Generate weekly productivity review"
 - "Hello!" -> direct_response: "Hey! I'm ChronAI, your AI productivity assistant. I can help you manage your calendar, tasks, emails, and reminders. What would you like to do?"
 
 Respond with a JSON object:
@@ -436,6 +441,7 @@ Respond with JSON: {{"resolution": "answer"}} or {{"resolution": "new_topic"}}."
             "notification": "Reviewing your reminders...",
             "email": "Looking through your email...",
             "voice": "Preparing a voice response...",
+            "review": "Generating your weekly review...",
         }.get(agent_name, f"Working with {agent_name}...")
 
     async def _analyze_intent(self, message: str, conversation_history: list[dict], user_id: str = "") -> dict:

@@ -22,6 +22,7 @@ from app.agents.notification import NotificationAgent
 from app.agents.voice import VoiceAgent
 from app.agents.email import EmailAgent
 from app.agents.habits import HabitAgent
+from app.agents.review import ReviewAgent, generate_weekly_review
 from app.api.onboarding import router as onboarding_router
 from app.api.briefing import router as briefing_router
 from app.auth import verify_google_token
@@ -146,6 +147,7 @@ async def lifespan(app: FastAPI):
     VoiceAgent(mcp_client=mcp_client)
     EmailAgent(mcp_client=mcp_client)
     HabitAgent(mcp_client=mcp_client)
+    ReviewAgent(mcp_client=mcp_client)
 
     # Start proactive scheduler
     _scheduler_task = start_proactive_scheduler(connection_manager)
@@ -663,6 +665,32 @@ async def delete_habit(habit_id: str, auth_token: str = ""):
 
     await HabitRepository.delete(habit_id)
     return {"status": "deleted"}
+
+
+@app.get("/api/review/weekly")
+async def get_weekly_review(auth_token: str = ""):
+    """Get a personalized weekly productivity review.
+
+    Fetches calendar events, completed tasks, and habit data from the past
+    week and generates a markdown-formatted review with insights.
+
+    Args:
+        auth_token: Google OAuth token for authentication.
+
+    Returns:
+        Dict with 'review' key containing the markdown review text.
+    """
+    if not auth_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    user = await verify_google_token(auth_token)
+    user_id = user.get("sub", "")
+
+    review = await generate_weekly_review(user_id, auth_token, mcp_client)
+    return {"review": review}
 
 
 @app.get("/health")
