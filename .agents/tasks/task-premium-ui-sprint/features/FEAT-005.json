@@ -2,7 +2,7 @@
   "id": "FEAT-005",
   "type": "feat",
   "description": "Dashboard Empty State & Welcome Experience: When user opens dashboard with no data (no tasks, events, habits), show an engaging welcome state with a warm greeting, quick action cards, AI suggestion chips, and a small onboarding checklist widget. The page should feel alive even with zero data.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "1. In app/dashboard/page.tsx, detect when all data arrays are empty (tasks.length === 0 && events.length === 0 && habits.length === 0) after loading completes.",
     "2. When empty, render a dedicated WelcomeState section instead of the current stats/schedule/tasks sections. This should include:",
@@ -28,5 +28,5 @@
     "cd /projects/sandbox/ChronAI/frontend && npm run lint"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Build and lint pass cleanly. Needed to move useCallback for handleDismissChecklist above the early return to satisfy react-hooks/rules-of-hooks ESLint rule. The CheckSquare icon is aliased as CheckSquareFilled for the checklist done state. The bg-*-500/8 opacity pattern works with Tailwind for the icon container backgrounds."
 }
