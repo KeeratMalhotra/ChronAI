@@ -2,7 +2,7 @@
   "id": "FEAT-006-review-fixes",
   "type": "fix",
   "description": "Review fixes: (1) Custom recurrence days field is dead code, (2) Bulk action bar dropdowns are hover-only, (3) Prompt injection in templates/autopilot - use system_instruction separation.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "STEP 1 - Fix getNextDueDate to respect the days array when recurrence.type is 'custom'",
     "STEP 2 - Replace hover-only CSS with click-toggle state in bulk action bar dropdowns",
@@ -27,5 +27,5 @@
     "python3 -m py_compile /projects/sandbox/ChronAI/backend/app/api/templates.py"
   ],
   "blocked_reason": null,
-  "findings": null
+  "findings": "All three review issues fixed. Build, lint, and py_compile all pass successfully. The getNextDueDate function now iterates up to 7 days from base+interval to find a matching weekday. Bulk action bar uses openMenu state for click-toggle instead of CSS hover. Both autopilot.py and templates.py now follow the system_instruction separation pattern from context-suggest."
 }
