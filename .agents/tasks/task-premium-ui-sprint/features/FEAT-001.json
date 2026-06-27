@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "UI Polish & Matte Finish: Complete dark/light mode palette rework, matte surface treatment across all components, typography and spacing improvements, and dark mode contrast fix. This combines sprint items 1 and 5 since they both modify the same CSS variable system and component styles.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "1. Rework app/globals.css dark mode palette: Change .dark variables to softer backgrounds (#0f0f10, #18181b, #232326), warmer text colors (text-tertiary from #6b6b76 to #8b8b96 minimum), matte flat surfaces, replace pure white text with #ededed. Remove glossy glass effects or make them very subtle.",
     "2. Rework app/globals.css light mode palette: Cream-white backgrounds like Notion (#ffffff, #fafafa), warmer grays for text-secondary and text-tertiary.",
@@ -35,5 +35,5 @@
     "cd /projects/sandbox/ChronAI/frontend && npm run lint"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All changes verified with npm run build and npm run lint. Both pass without errors. Dark mode now uses #0f0f10/#18181b/#232326 backgrounds, text-tertiary is #8b8b96, text-primary is #ededed. All hover-lift/glow effects removed. Card, Button, Input no longer have framer-motion scale/y animations. Icons use strokeWidth 1.5 throughout. Light mode uses Notion-style cream-white palette."
 }
