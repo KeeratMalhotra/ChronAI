@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Transform AI Chat into a sliding side panel that can be detached as a floating draggable window. Change Spotify mini player button to vertical-only drag on right edge.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Refactor frontend/components/chat/AIChatPanel.tsx: Keep the existing slide-from-right panel behavior. Add a 'detach' button in the header (e.g., an icon like 'ExternalLink' or 'Maximize2' from lucide-react). When detached, the panel becomes a draggable floating window (using framer-motion drag like SpotifyMiniPlayer does). The floating window should have a title bar for dragging, be resizable or fixed-size (400x500px), and have a button to 're-attach' (snap back to slide panel). Use framer-motion's drag prop with dragMomentum={false}.",
     "Update frontend/app/dashboard/layout.tsx: Add state for 'detached' mode. Pass detached/onDetach/onAttach props to AIChatPanel. When detached, the panel should NOT show the backdrop overlay (since it is floating). The FAB button should still toggle visibility even in detached mode.",
@@ -23,5 +23,5 @@
     "cd /projects/sandbox/ChronAI/frontend && npm run lint"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Build and lint pass cleanly. Used inline styles for button positioning instead of styled-jsx for better compatibility. The detached floating window uses framer-motion drag on the entire container div. Drag constraints for the Spotify button are calculated dynamically based on viewport height and current top position."
 }
