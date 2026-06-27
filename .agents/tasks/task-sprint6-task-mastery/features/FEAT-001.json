@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "fix",
   "description": "Fix Calendar Card-Fitting Bug - Rewrite the event card CSS in day/week views so cards fit perfectly within their time-row boundaries. Fix card height/padding/overflow so text does not spill or get cut off. Ensure short events (15-30 min) are still readable, long events span cleanly.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In frontend/app/dashboard/calendar/page.tsx, modify the TimeBlock component's CSS. Current issues: the card uses absolute positioning with top/height based on ROW_HEIGHT=64px (h-16). The card has px-2 py-1 padding plus border which can cause overflow. For short events (15-30 min), the height is max(24, (duration/60)*64) = 16-32px which is too tight for text + time display.",
     "Fix the height calculation: For 15min events height = max(28, (15/60)*64) = max(28,16) = 28px. For 30min events = max(28,32) = 32px. Change min-height from 24px to 28px. Add overflow-hidden with text-ellipsis.",
@@ -26,5 +26,5 @@
     "cd /projects/sandbox/ChronAI/frontend && npm run lint"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Successfully implemented. Build and lint pass clean. Changed min height 24->28, conditional padding for compact vs tall events, border-l-2 left accent stripe replaces full border, overflow-hidden + line-clamp-1 for text, three-tier display logic (title only / title+time inline / title + full time range)."
 }
