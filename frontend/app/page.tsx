@@ -1,83 +1,283 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { motion } from "framer-motion";
-import AmbientBackground from "@/components/ui/AmbientBackground";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
+import { Button } from "@/components/ui/Button";
 
-function GoogleGlyph() {
+/* ------------------------------------------------------------------ */
+/* Constants                                                            */
+/* ------------------------------------------------------------------ */
+
+const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
+
+const features = [
+  {
+    title: "AI Assistant",
+    description:
+      "Your intelligent companion that understands context, anticipates needs, and helps you stay on track effortlessly.",
+    icon: (
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4Z" />
+        <path d="M16 14H8a4 4 0 0 0-4 4v2h16v-2a4 4 0 0 0-4-4Z" />
+        <circle cx="12" cy="6" r="1" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    title: "Smart Scheduling",
+    description:
+      "Automatically optimizes your calendar around your energy levels, priorities, and deep work windows.",
+    icon: (
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="3" y="4" width="18" height="18" rx="2" />
+        <path d="M16 2v4M8 2v4M3 10h18" />
+        <circle cx="12" cy="15" r="2" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    title: "Task Management",
+    description:
+      "Organize, prioritize, and complete tasks with AI-powered suggestions and natural language input.",
+    icon: (
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M9 11l3 3L22 4" />
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+    ),
+  },
+  {
+    title: "Habit Tracking",
+    description:
+      "Build lasting habits with streak tracking, gentle reminders, and progress insights powered by AI.",
+    icon: (
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+      </svg>
+    ),
+  },
+];
+
+/* ------------------------------------------------------------------ */
+/* Animations                                                          */
+/* ------------------------------------------------------------------ */
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const staggerContainer = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.12, delayChildren: 0.1 },
+  },
+};
+
+const cardVariant = {
+  hidden: { opacity: 0, y: 40, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1 },
+};
+
+/* ------------------------------------------------------------------ */
+/* Sub-components                                                       */
+/* ------------------------------------------------------------------ */
+
+function GoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
       <path
-        fill="#FFC107"
-        d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8a12 12 0 1 1 0-24c3 0 5.8 1.1 7.9 3l5.7-5.7A20 20 0 1 0 24 44a20 20 0 0 0 19.6-23.5z"
+        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z"
+        fill="#4285F4"
       />
       <path
-        fill="#FF3D00"
-        d="M6.3 14.7l6.6 4.8A12 12 0 0 1 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7A20 20 0 0 0 6.3 14.7z"
+        d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z"
+        fill="#34A853"
       />
       <path
-        fill="#4CAF50"
-        d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2A12 12 0 0 1 12.7 28l-6.5 5A20 20 0 0 0 24 44z"
+        d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z"
+        fill="#FBBC05"
       />
       <path
-        fill="#1976D2"
-        d="M43.6 20.5H42V20H24v8h11.3a12 12 0 0 1-4.1 5.6l6.2 5.2C39.9 36 44 30.6 44 24c0-1.2-.1-2.4-.4-3.5z"
+        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z"
+        fill="#EA4335"
       />
     </svg>
   );
 }
 
+function FeatureCard({
+  title,
+  description,
+  icon,
+}: {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <motion.div
+      variants={cardVariant}
+      transition={spring}
+      whileHover={{ y: -6, scale: 1.02 }}
+      className="group relative rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 transition-colors duration-200 hover:border-accent-400/30 hover:bg-[var(--surface-hover)]"
+    >
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-500/10 text-accent-400 transition-colors group-hover:bg-accent-500/15">
+        {icon}
+      </div>
+      <h3 className="mb-2 text-base font-semibold text-[var(--text-primary)]">
+        {title}
+      </h3>
+      <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+        {description}
+      </p>
+    </motion.div>
+  );
+}
+
+function FeaturesSection() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  return (
+    <motion.section
+      ref={ref}
+      variants={staggerContainer}
+      initial="hidden"
+      animate={isInView ? "visible" : "hidden"}
+      className="mx-auto mt-32 grid w-full max-w-4xl grid-cols-1 gap-4 px-6 sm:grid-cols-2"
+    >
+      {features.map((f) => (
+        <FeatureCard key={f.title} {...f} />
+      ))}
+    </motion.section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Landing Page                                                        */
+/* ------------------------------------------------------------------ */
+
 export default function LandingPage() {
   return (
-    <main className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-base-950">
-      <AmbientBackground />
+    <main className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto bg-[var(--bg)]">
+      {/* Gradient mesh background */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-[30%] left-[20%] h-[600px] w-[600px] rounded-full bg-accent-500/[0.07] blur-[120px] animate-breathe" />
+        <div className="absolute -bottom-[20%] right-[10%] h-[500px] w-[500px] rounded-full bg-accent-700/[0.05] blur-[100px] animate-float" />
+        <div className="absolute top-[40%] -left-[10%] h-[400px] w-[400px] rounded-full bg-accent-400/[0.04] blur-[80px] animate-float" />
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 flex flex-col items-center px-6 text-center"
-      >
+      {/* Hero */}
+      <section className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 pt-20 pb-16">
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1, duration: 0.6 }}
-          className="mb-8 flex items-center gap-2"
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+          className="flex flex-col items-center text-center"
         >
-          <span className="h-2.5 w-2.5 rounded-full bg-accent-gradient shadow-glow" />
-          <span className="font-mono text-xs uppercase tracking-[0.4em] text-white/40">
-            ChronAI
-          </span>
+          {/* Brand badge */}
+          <motion.div
+            variants={fadeUp}
+            transition={spring}
+            className="mb-8 flex items-center gap-2.5"
+          >
+            <span className="h-2 w-2 rounded-full bg-accent-500 shadow-glow-sm" />
+            <span className="font-mono text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">
+              ChronAI
+            </span>
+          </motion.div>
+
+          {/* Heading */}
+          <motion.h1
+            variants={fadeUp}
+            transition={spring}
+            className="max-w-3xl text-balance text-4xl font-semibold leading-[1.1] tracking-tight text-[var(--text-primary)] sm:text-5xl md:text-6xl lg:text-7xl"
+          >
+            Your day, intelligently{" "}
+            <span className="gradient-text">orchestrated</span>
+          </motion.h1>
+
+          {/* Subtitle */}
+          <motion.p
+            variants={fadeUp}
+            transition={spring}
+            className="mt-6 max-w-lg text-lg leading-relaxed text-[var(--text-secondary)]"
+          >
+            An intelligent companion for your time, tasks, and intentions.
+            Quiet until you need it, present when you do.
+          </motion.p>
+
+          {/* CTA */}
+          <motion.div variants={fadeUp} transition={spring} className="mt-10">
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+              className="gap-3 rounded-full px-7 py-3.5 text-[15px] shadow-glow hover:shadow-glow-lg"
+            >
+              <GoogleIcon />
+              Continue with Google
+            </Button>
+          </motion.div>
+
+          {/* Trust badge */}
+          <motion.p
+            variants={fadeUp}
+            transition={spring}
+            className="mt-8 font-mono text-[11px] tracking-wide text-[var(--text-tertiary)]"
+          >
+            Private by design
+          </motion.p>
         </motion.div>
+      </section>
 
-        <h1 className="max-w-3xl text-balance text-5xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl md:text-7xl">
-          A calmer way to
-          <br />
-          <span className="gradient-text-soft">move through your day</span>
-        </h1>
+      {/* Features */}
+      <FeaturesSection />
 
-        <p className="mt-7 max-w-md text-lg text-white/45">
-          An intelligent companion for your time, tasks, and intentions — quiet
-          until you need it, present when you do.
+      {/* Footer */}
+      <footer className="relative z-10 mt-32 pb-12 text-center">
+        <p className="text-xs text-[var(--text-tertiary)]">
+          Built with care. Your data stays yours.
         </p>
-
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-          className="group mt-10 flex items-center gap-3 rounded-full bg-white px-7 py-3.5 text-[15px] font-medium text-base-950 shadow-panel transition-shadow hover:shadow-glow"
-        >
-          <GoogleGlyph />
-          Continue with Google
-        </motion.button>
-
-        <p className="mt-6 font-mono text-[11px] tracking-wide text-white/25">
-          Private by design · You stay in control
-        </p>
-      </motion.div>
-
-      {/* faint bottom gradient line */}
-      <div className="absolute bottom-0 left-1/2 z-10 h-px w-2/3 -translate-x-1/2 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+      </footer>
     </main>
   );
 }

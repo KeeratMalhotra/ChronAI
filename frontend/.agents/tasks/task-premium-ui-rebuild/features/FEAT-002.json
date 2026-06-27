@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Build the premium Landing page (app/page.tsx) and immersive Onboarding flow (app/onboarding/page.tsx). Landing: cinematic hero with animated gradient background, product feature showcase cards, premium Google sign-in button with hover animations. Onboarding: full-screen multi-step wizard with animated scene transitions, custom role picker with icon cards, time picker wheels, priority tag selector, goals input, animated summary with confetti/sparkle finish.",
-  "status": "pending",
+  "status": "completed",
   "steps": [
     "Rewrite app/page.tsx as a premium landing page: 1) Animated hero section with large typography (Notion-style clean, bold heading), subtle gradient mesh background (CSS only, no Three.js required), tagline with typewriter or fade-word animation. 2) Feature showcase section below fold with 3-4 cards (AI Assistant, Smart Calendar, Task Management, Habits) with hover lift animations. 3) Premium 'Continue with Google' CTA button using the new Button component with Google icon, centered with generous whitespace. 4) Footer with subtle branding. Use signIn('google', { callbackUrl: '/dashboard' }) from next-auth/react. Spring-based framer-motion animations throughout.",
     "Rewrite app/onboarding/page.tsx: Keep the same data collection (role, occupation, work hours, wake/sleep time, daily routine, priorities, goals) and the same postOnboarding API call. Rebuild the UI as a premium full-screen experience: 1) Animated progress indicator (segmented bar that fills with spring animation). 2) Each step gets a full-viewport treatment with large headings, generous spacing. 3) Role selection: large icon cards in a grid with spring scale on select. 4) Schedule step: elegant time selectors (styled dropdowns or custom wheel-style pickers). 5) Priorities: animated tag pills with satisfying select/deselect spring animations. 6) Summary: beautiful recap card with a 'Launch' button that has a sparkle animation. All transitions use AnimatePresence with custom slide/fade variants. Keep all existing form state logic and API integration."
@@ -19,5 +19,5 @@
     "cd /projects/sandbox/ChronAI/frontend && pnpm build"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Build passes cleanly. Landing page uses framer-motion staggered reveal with spring physics, CSS gradient mesh background, feature cards with hover lift, and Button component for Google sign-in. Onboarding is a full-screen 4-step wizard with animated progress bar, slide transitions via AnimatePresence, spring-animated role cards/priority pills, and the same postOnboarding payload structure. All CSS variables from the theme system are used throughout."
 }
