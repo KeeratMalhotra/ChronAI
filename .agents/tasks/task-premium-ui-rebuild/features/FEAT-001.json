@@ -1,33 +1,24 @@
 {
   "id": "FEAT-001",
-  "type": "chore",
-  "description": "Foundation layer: Rebuild the design system (globals.css, tailwind.config.ts, layout.tsx, ui primitives) with Notion-style fonts, premium CSS variables, enhanced animation tokens, and polished base components.",
+  "type": "feat",
+  "description": "Rebuild the foundation layer: globals.css theme system, tailwind.config.ts design tokens, root layout with Notion-style fonts, and all UI primitives in components/ui/. This establishes the premium design system that every subsequent feature depends on.",
   "status": "completed",
   "steps": [
-    "Rewrite app/globals.css with a complete premium theme system: enhanced CSS variables for both dark and light mode with Notion-inspired warm grays, refined glass morphism utilities, improved gradient text classes, smoother scrollbar styling, new utility classes for micro-interactions (hover-lift, press-scale, etc.), enhanced focus ring styles. Dark mode should be default.",
-    "Rewrite tailwind.config.ts with updated design tokens: Notion-style system font stack as default sans-serif (Inter as primary with -apple-system, BlinkMacSystemFont, Segoe UI fallbacks), JetBrains Mono for monospace, refined spacing scale, updated color palette with warm neutrals, enhanced shadow system (subtle Notion-style shadows + accent glows), new animation keyframes for page transitions and micro-interactions, background gradients.",
-    "Rewrite app/layout.tsx: Keep Providers wrapper and ThemeProvider usage, update fonts to use Inter (from next/font/google) with the Notion-style variable, update metadata to be more premium, keep the same dark class on html element.",
-    "Rebuild components/ui/Button.tsx with enhanced variants, better hover/active/focus states, smoother spring animations, and press feedback. Keep the same props interface (variant, size, loading, children).",
-    "Rebuild components/ui/Card.tsx with refined borders, subtle shadows, better hover states with lift animation. Keep same props interface.",
-    "Rebuild components/ui/Input.tsx with cleaner styling, better focus states, smoother animations. Keep same props interface.",
-    "Rebuild components/ui/Modal.tsx with better backdrop blur, smoother spring transitions, refined borders. Keep same props interface.",
-    "Rebuild components/ui/Badge.tsx with slightly refined styling. Keep same props interface.",
-    "Rebuild components/ui/Toggle.tsx with smoother knob animation, better color transitions. Keep same props interface.",
-    "Rebuild components/ui/Skeleton.tsx with better shimmer animation. Keep same props interface.",
-    "Rebuild components/ui/EmptyState.tsx with slightly enhanced styling. Keep same props interface.",
-    "Keep components/ui/theme-provider.tsx exactly as-is since it provides the useTheme hook used everywhere.",
-    "Run pnpm build to verify no type errors or build failures."
+    "Rewrite app/globals.css with an enhanced CSS variable system: refined dark/light mode tokens, premium glassmorphism effects, smoother scrollbar styling, better gradient-text utilities, enhanced micro-interaction classes (hover-lift, press-scale, hover-glow), new utility classes for focus states, and improved reduced-motion media query. Keep the existing variable names (--bg, --surface, --text-primary etc) but refine their values for more premium feel. Add new transitions and keyframes for page-level animations.",
+    "Rewrite tailwind.config.ts with refined design tokens: keep the existing color palette structure but add richer gradients, update fontFamily to use Notion-style system fonts as primary (Inter as loaded font, fall back to -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Apple Color Emoji, Arial, sans-serif), add more sophisticated box-shadow values, add new spacing values, enhance animations with additional spring-based keyframes, add backdrop-blur utilities, and add custom plugins for text-balance if needed.",
+    "Rewrite app/layout.tsx: keep Inter and JetBrains_Mono font loading from next/font/google, keep Providers and ThemeProvider wrapping, update metadata for better SEO, ensure the html element gets both font CSS variables applied, keep dark class default. Do NOT modify Providers.tsx or theme-provider.tsx.",
+    "Rewrite all UI primitives in components/ui/ (Button.tsx, Card.tsx, Badge.tsx, Input.tsx, Modal.tsx, Toggle.tsx, Skeleton.tsx, EmptyState.tsx, theme-provider.tsx stays unchanged): enhance each with more premium styling, better hover/focus states, smoother framer-motion animations, and support for the refined design tokens. Add a new Tabs.tsx component and a new Tooltip.tsx component. Make Button support an icon-only mode. Make Card support different size variants."
   ],
   "acceptance_criteria": [
     "pnpm build passes without errors",
-    "The CSS variable system supports both dark (default) and light mode",
-    "Font family uses Notion-style system font stack with Inter as primary",
-    "All ui/ components maintain their existing prop interfaces",
-    "theme-provider.tsx is unchanged"
+    "Dark and light mode CSS variables are comprehensive and well-organized",
+    "All UI primitives export correctly and can be imported by other components",
+    "Font loading uses Inter (similar to Notion) with proper system font fallbacks",
+    "Animation keyframes include spring-based easing curves"
   ],
   "verification": [
     "cd /projects/sandbox/ChronAI/frontend && pnpm build"
   ],
   "blocked_reason": null,
-  "findings": "Build, lint, and tests all pass. Skeleton.tsx did not change materially (already had proper shimmer). All component prop interfaces preserved. CSS variables now include --surface-elevated and --accent-muted for downstream use. The Tailwind config includes ease-spring timing function and new animations (fade-in-up, slide-in-right, spin-in). The theme-provider.tsx was left untouched."
+  "findings": "Design system was already partially implemented from prior commits. Enhanced Button with iconOnly prop, Card with size variants (sm/md/lg), created new Tabs compound component (Tabs, TabsList, TabsTrigger, TabsContent) with animated indicator, and Tooltip component with side positioning and spring animations. Updated tailwind font stack to Notion-style: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Apple Color Emoji, Arial, sans-serif. Build passes cleanly."
 }
