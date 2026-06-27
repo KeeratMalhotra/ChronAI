@@ -14,7 +14,6 @@ import {
   ChevronsRight,
   Moon,
   Sun,
-  Menu,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -70,17 +69,22 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     <div className="flex h-full flex-col">
       {/* Logo / Brand */}
       <div className="flex h-16 items-center gap-2.5 px-4">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-accent-gradient">
-          <span className="text-sm font-bold text-white">C</span>
-        </div>
+        <motion.div
+          whileHover={{ scale: 1.05, rotate: 2 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 400, damping: 15 }}
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-accent-gradient shadow-md shadow-accent-500/20"
+        >
+          <span className="text-sm font-bold text-white select-none">C</span>
+        </motion.div>
         <AnimatePresence mode="wait">
           {!collapsed && (
             <motion.span
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden whitespace-nowrap text-base font-semibold text-[var(--text-primary)]"
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="overflow-hidden whitespace-nowrap text-base font-semibold tracking-tight text-[var(--text-primary)]"
             >
               ChronAI
             </motion.span>
@@ -89,7 +93,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="mt-4 flex flex-1 flex-col gap-1 px-3">
+      <nav className="mt-4 flex flex-1 flex-col gap-0.5 px-3">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.path);
           const Icon = item.icon;
@@ -100,36 +104,51 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               href={item.path}
               onClick={onMobileClose}
               className={`
-                group relative flex items-center gap-3 rounded-lg px-3 py-2.5
-                transition-colors duration-150
+                group relative flex items-center gap-3 rounded-xl px-3 py-2.5
+                transition-all duration-200 ease-out
                 ${
                   active
-                    ? "bg-[var(--accent-subtle,rgba(99,102,241,0.1))] text-accent-500"
+                    ? "bg-[var(--accent-subtle,rgba(99,102,241,0.08))] text-accent-500"
                     : "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
                 }
               `}
             >
-              {/* Active indicator */}
+              {/* Active indicator bar */}
               {active && (
                 <motion.div
                   layoutId="sidebar-active-indicator"
                   className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-accent-500"
-                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 28 }}
                 />
               )}
 
-              <Icon
-                size={20}
-                strokeWidth={active ? 2 : 1.7}
-                className="flex-shrink-0"
-              />
+              {/* Active background glow */}
+              {active && (
+                <motion.div
+                  layoutId="sidebar-active-bg"
+                  className="absolute inset-0 rounded-xl bg-accent-500/[0.06]"
+                  transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                />
+              )}
+
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className="relative flex-shrink-0"
+              >
+                <Icon
+                  size={20}
+                  strokeWidth={active ? 2.2 : 1.7}
+                />
+              </motion.div>
 
               <AnimatePresence mode="wait">
                 {!collapsed && (
                   <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -4 }}
                     transition={{ duration: 0.15 }}
                     className="overflow-hidden whitespace-nowrap text-sm font-medium"
                   >
@@ -140,7 +159,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
               {/* Tooltip for collapsed state */}
               {collapsed && (
-                <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg bg-[var(--surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] opacity-0 shadow-lg ring-1 ring-[var(--border)] transition-opacity group-hover:opacity-100">
+                <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg bg-[var(--surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] opacity-0 shadow-lg ring-1 ring-[var(--border)] transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-1">
                   {item.label}
                 </span>
               )}
@@ -150,26 +169,32 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       </nav>
 
       {/* Bottom section */}
-      <div className="mt-auto border-t border-[var(--border-subtle)] px-3 py-3">
+      <div className="mt-auto border-t border-[var(--border-subtle)] px-3 py-3 space-y-0.5">
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[var(--text-secondary)] transition-all duration-200 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
           aria-label="Toggle theme"
         >
           <motion.div
-            animate={{ rotate: theme === "dark" ? 0 : 180 }}
-            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            key={theme}
+            initial={{ rotate: -90, opacity: 0 }}
+            animate={{ rotate: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className="flex-shrink-0"
           >
-            {theme === "dark" ? <Moon size={20} strokeWidth={1.7} /> : <Sun size={20} strokeWidth={1.7} />}
+            {theme === "dark" ? (
+              <Moon size={20} strokeWidth={1.7} />
+            ) : (
+              <Sun size={20} strokeWidth={1.7} />
+            )}
           </motion.div>
           <AnimatePresence mode="wait">
             {!collapsed && (
               <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: "auto" }}
-                exit={{ opacity: 0, width: 0 }}
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -4 }}
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden whitespace-nowrap text-sm font-medium"
               >
@@ -179,25 +204,25 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           </AnimatePresence>
         </button>
 
-        {/* Collapse toggle */}
+        {/* Collapse toggle (hidden on mobile) */}
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="mt-1 hidden w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] md:flex"
+          className="hidden w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[var(--text-secondary)] transition-all duration-200 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] md:flex"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <div className="flex-shrink-0">
-            {collapsed ? (
-              <ChevronsRight size={20} strokeWidth={1.7} />
-            ) : (
-              <ChevronsLeft size={20} strokeWidth={1.7} />
-            )}
-          </div>
+          <motion.div
+            animate={{ rotate: collapsed ? 180 : 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="flex-shrink-0"
+          >
+            <ChevronsLeft size={20} strokeWidth={1.7} />
+          </motion.div>
           <AnimatePresence mode="wait">
             {!collapsed && (
               <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: "auto" }}
-                exit={{ opacity: 0, width: 0 }}
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -4 }}
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden whitespace-nowrap text-sm font-medium"
               >
@@ -230,7 +255,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
               onClick={onMobileClose}
             />
             <motion.aside
@@ -238,12 +263,12 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed left-0 top-0 z-50 h-screen w-[260px] border-r border-[var(--border-subtle)] bg-[var(--bg-secondary)] md:hidden"
+              className="fixed left-0 top-0 z-50 h-screen w-[260px] border-r border-[var(--border-subtle)] bg-[var(--bg-secondary)] shadow-2xl md:hidden"
             >
               <div className="absolute right-3 top-4">
                 <button
                   onClick={onMobileClose}
-                  className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+                  className="rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
                 >
                   <X size={20} />
                 </button>
@@ -257,4 +282,4 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   );
 }
 
-export { Menu as MenuIcon };
+export { ChevronsRight as MenuIcon };

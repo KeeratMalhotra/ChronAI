@@ -13,8 +13,10 @@ interface AppShellProps {
 
 /**
  * AppShell
- * Main layout wrapper: Sidebar (left) + TopBar (top) + scrollable content area.
- * On mobile, sidebar is hidden and accessible via hamburger menu overlay.
+ * Premium multi-panel workspace layout.
+ * Flex layout: Sidebar (left) + main area (right).
+ * Main area: TopBar (top) + scrollable content.
+ * Mobile sidebar is hidden behind a hamburger overlay.
  */
 
 const PAGE_TITLES: Record<string, string> = {
@@ -39,6 +41,10 @@ export default function AppShell({
     setMobileMenuOpen(false);
   }, []);
 
+  const handleMenuClick = useCallback(() => {
+    setMobileMenuOpen(true);
+  }, []);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg)]">
       {/* Sidebar */}
@@ -51,12 +57,12 @@ export default function AppShell({
           title={title}
           connected={connected}
           userImage={userImage}
-          onMenuClick={() => setMobileMenuOpen(true)}
+          onMenuClick={handleMenuClick}
         />
 
         {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-8">
+        <main className="flex-1 overflow-y-auto scroll-smooth">
+          <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
             {children}
           </div>
         </main>
