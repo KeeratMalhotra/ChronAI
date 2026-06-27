@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Rebuild calendar time-grid event positioning and drag-drop time update. Fix multi-hour events to span correctly using precise pixel math (height = duration_minutes / 60 * 64px). Update the time text on the event card when events are dragged to new time slots. Also implement smart fetch scoping: Day view fetches 1 day, Week view 7 days, Month view 30 days.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In frontend/app/dashboard/calendar/page.tsx, refactor the TimeBlock component to ensure multi-hour events span perfectly: height = Math.max(24, (duration / 60) * ROW_HEIGHT) where ROW_HEIGHT = 64. The top position = ((startHour - 6) * 60 + startMinutes) / 60 * ROW_HEIGHT. This logic already exists but verify it works for events like 2pm-5pm (should be 192px height, top at 8*64=512px).",
     "Fix the handleDragEnd function: after computing newStart/newEnd and updating local state, the TimeBlock component must re-render showing the NEW time text (format(newStart, 'h:mm a') - format(newEnd, 'h:mm a')). Currently the event data in state is updated (start/end ISO strings change) but verify the TimeBlock reads from the event prop's start/end. The time text display line uses format(startDate, 'h:mm a') - format(endDate, 'h:mm a') where startDate = parseISO(event.start) - this should already update reactively. If there is a bug where it does not update, investigate if it is a key/identity issue with React reconciliation.",
@@ -23,5 +23,5 @@
     "cd /projects/sandbox/ChronAI/frontend && npm run lint"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "TimeBlock pixel math was already correct (height = duration/60 * 64, top = minutesFrom6AM/60 * 64). The drag-drop time text issue was a React reconciliation problem: the key was event.id which stays the same after drag, so React reused the component instance with stale useDraggable hook state. Fixed by using a key that includes event.start, forcing remount when time changes. Smart fetch scoping added with view dependency. Dashboard unauthenticated state handled with redirect + fallback UI. All text uses CSS variable classes (no hardcoded colors found). Build and lint pass cleanly."
 }
