@@ -1,0 +1,106 @@
+"use client";
+
+import { useEffect, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { X, Sparkles } from "lucide-react";
+import ChatExperience from "./ChatExperience";
+
+interface AIChatPanelProps {
+  open: boolean;
+  onClose: () => void;
+  accessToken: string;
+  userName?: string;
+}
+
+const SUGGESTIONS = [
+  "Plan my day",
+  "Prioritize tasks",
+  "What's next?",
+];
+
+export default function AIChatPanel({
+  open,
+  onClose,
+  accessToken,
+  userName,
+}: AIChatPanelProps) {
+  // Close on Escape
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        onClose();
+      }
+    },
+    [open, onClose]
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[80] bg-black/30 backdrop-blur-[2px]"
+            onClick={onClose}
+          />
+
+          {/* Panel */}
+          <motion.div
+            initial={{ x: 400, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 400, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed right-0 top-0 z-[81] flex h-full w-[400px] max-w-[90vw] flex-col border-l border-[var(--border)] bg-[var(--bg)] shadow-2xl"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-accent-500" />
+                <span className="text-sm font-semibold text-[var(--text-primary)]">
+                  AI Assistant
+                </span>
+              </div>
+              <button
+                onClick={onClose}
+                className="rounded-md p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Chat body */}
+            <div className="flex-1 overflow-hidden">
+              <ChatExperience
+                accessToken={accessToken}
+                userName={userName}
+              />
+            </div>
+
+            {/* Suggestion chips */}
+            <div className="border-t border-[var(--border-subtle)] px-4 py-3">
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTIONS.map((suggestion) => (
+                  <span
+                    key={suggestion}
+                    className="inline-flex items-center rounded-full bg-[var(--surface-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] cursor-default"
+                  >
+                    {suggestion}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}

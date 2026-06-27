@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,11 +16,9 @@ import { format } from "date-fns";
 
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
-import ChatExperience from "@/components/chat/ChatExperience";
+import AIChatPanel from "@/components/chat/AIChatPanel";
 import CommandPalette from "@/components/CommandPalette";
 import FocusMode from "@/components/FocusMode";
-import type { ConnectionState } from "@/hooks/useChatSocket";
-import type { PanelKey } from "@/components/layout/SideDock";
 import {
   fetchOnboardingStatus,
   fetchTasks,
@@ -54,37 +52,19 @@ export default function DashboardPage() {
 
   // Chat panel
   const [chatOpen, setChatOpen] = useState(false);
-  const [connection, setConnection] = useState<ConnectionState>("connecting");
-  const sendToChatRef = useRef<((msg: string) => void) | null>(null);
 
   // Focus mode
   const [focusActive, setFocusActive] = useState(false);
   const [focusTask, setFocusTask] = useState<string | undefined>(undefined);
-
-  const handleSendReady = useCallback((sendFn: (content: string) => void) => {
-    sendToChatRef.current = sendFn;
-  }, []);
-
-  const handleCommandSend = useCallback((message: string) => {
-    sendToChatRef.current?.(message);
-    setChatOpen(true);
-  }, []);
 
   const handleFocusMode = useCallback(() => {
     setFocusTask(undefined);
     setFocusActive(true);
   }, []);
 
-  const handleOpenPanel = useCallback((key: PanelKey) => {
-    // Navigate to the respective full page
-    const routes: Record<string, string> = {
-      calendar: "/dashboard/calendar",
-      tasks: "/dashboard/tasks",
-      habits: "/dashboard/habits",
-      schedule: "/dashboard/calendar",
-    };
-    router.push(routes[key] || "/dashboard");
-  }, [router]);
+  const handleOpenChat = useCallback(() => {
+    setChatOpen(true);
+  }, []);
 
   // Onboarding gate
   useEffect(() => {
@@ -338,44 +318,18 @@ export default function DashboardPage() {
         )}
       </motion.button>
 
-      {/* AI Chat panel */}
-      <AnimatePresence>
-        {chatOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-24 right-6 z-30 flex h-[500px] w-[380px] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3">
-              <span className="text-sm font-medium text-[var(--text-primary)]">
-                AI Assistant
-              </span>
-              <button
-                onClick={() => setChatOpen(false)}
-                className="rounded-md p-1 text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)]"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <ChatExperience
-                accessToken={accessToken}
-                userName={user?.name ?? undefined}
-                onConnectionChange={setConnection}
-                onSendReady={handleSendReady}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* AI Chat side panel */}
+      <AIChatPanel
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        accessToken={accessToken}
+        userName={user?.name ?? undefined}
+      />
 
       {/* Command Palette */}
       <CommandPalette
-        onSendChat={handleCommandSend}
-        onOpenPanel={handleOpenPanel}
         onFocusMode={handleFocusMode}
+        onOpenChat={handleOpenChat}
       />
 
       {/* Focus Mode overlay */}
