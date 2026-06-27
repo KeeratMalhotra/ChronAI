@@ -9,6 +9,12 @@ import {
 } from "@/components/chat/ConnectionContext";
 import { AIContextProvider } from "@/components/ai/AIContextProvider";
 import AIToast from "@/components/ai/AIToast";
+import { useNotificationSocket } from "@/hooks/useNotificationSocket";
+
+function NotificationSocketListener() {
+  useNotificationSocket();
+  return null;
+}
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -25,6 +31,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <AppShell connected={connected} userImage={userImage}>
       <AIContextProvider>
+        <NotificationSocketListener />
         {children}
         <AIToast />
       </AIContextProvider>

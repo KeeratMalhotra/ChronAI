@@ -40,6 +40,8 @@ import {
   updateTask as apiUpdateTask,
   fetchAiPriorities,
 } from "@/lib/api-extended";
+import { useAI } from "@/components/ai/AIContextProvider";
+import AISuggestionBanner from "@/components/ai/AISuggestionBanner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -615,6 +617,7 @@ function TaskDetailPanel({
 export default function TasksPage() {
   const { data: session } = useSession();
   const accessToken = (session as { accessToken?: string })?.accessToken || "";
+  const { reportAction, suggestions, dismissSuggestion } = useAI();
 
   const [tasks, setTasks] = useState<LocalTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -720,6 +723,9 @@ export default function TasksPage() {
     setNewPriority("none");
     setShowCreateModal(false);
 
+    // Report action to AI context
+    reportAction("task_created", { title: task.title, priority: task.priority, hasDue: !!newDue });
+
     // Call API (fire-and-forget with error tolerance)
     try {
       const result = await apiCreateTask(accessToken, {
@@ -743,6 +749,11 @@ export default function TasksPage() {
       const task = prev.find((t) => t.id === taskId);
       const newCompleted = task ? task.status !== "done" : false;
 
+      // Report action when marking as done
+      if (newCompleted && task) {
+        reportAction("task_completed", { taskId, title: task.title });
+      }
+
       // Call API to sync completion state
       if (accessToken && taskId) {
         apiUpdateTask(accessToken, taskId, { completed: newCompleted }).catch(
@@ -762,7 +773,7 @@ export default function TasksPage() {
           : t
       );
     });
-  }, [accessToken]);
+  }, [accessToken, reportAction]);
 
   const handleUpdateTask = useCallback((updated: LocalTask) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
@@ -776,8 +787,14 @@ export default function TasksPage() {
   }, []);
 
   const handleDeleteTask = useCallback((taskId: string) => {
-    // Optimistically remove from local state
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    // Report to AI context
+    setTasks((prev) => {
+      const task = prev.find((t) => t.id === taskId);
+      if (task) {
+        reportAction("task_deleted", { taskId, title: task.title });
+      }
+      return prev.filter((t) => t.id !== taskId);
+    });
     setSelectedTask(null);
     setDeleteTarget(null);
 
@@ -787,7 +804,7 @@ export default function TasksPage() {
         // API failed - task already removed locally
       });
     }
-  }, [accessToken]);
+  }, [accessToken, reportAction]);
 
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -861,6 +878,12 @@ export default function TasksPage() {
     // Determine which column the card was dropped into
     const overTask = tasks.find((t) => t.id === over.id);
     if (overTask && overTask.status !== activeTask.status) {
+      reportAction("task_dragged", {
+        taskId: activeTask.id,
+        title: activeTask.title,
+        fromStatus: activeTask.status,
+        toStatus: overTask.status,
+      });
       setTasks((prev) =>
         prev.map((t) =>
           t.id === activeTask.id
@@ -935,6 +958,27 @@ export default function TasksPage() {
           </Button>
         </div>
       </div>
+
+      {/* AI Suggestion Banner */}
+      {(() => {
+        const activeSuggestion = suggestions.find((s) => !s.dismissed);
+        if (!activeSuggestion) return null;
+        return (
+          <div className="mb-4">
+            <AnimatePresence>
+              <AISuggestionBanner
+                suggestion={activeSuggestion.text}
+                type={activeSuggestion.type}
+                onDismiss={() => dismissSuggestion(activeSuggestion.id)}
+                actions={activeSuggestion.actions?.map((a) => ({
+                  label: a.label,
+                  onClick: () => dismissSuggestion(activeSuggestion.id),
+                }))}
+              />
+            </AnimatePresence>
+          </div>
+        );
+      })()}
 
       {/* Content */}
       {loading ? (

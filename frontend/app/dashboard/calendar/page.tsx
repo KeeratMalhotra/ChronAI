@@ -39,6 +39,8 @@ import {
   deleteCalendarEvent,
   type CalendarEvent,
 } from "@/lib/api";
+import { useAI } from "@/components/ai/AIContextProvider";
+import AISuggestionBanner from "@/components/ai/AISuggestionBanner";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
@@ -202,6 +204,7 @@ function CurrentTimeIndicator() {
 export default function CalendarPage() {
   const { data: session } = useSession();
   const accessToken = (session as { accessToken?: string })?.accessToken || "";
+  const { reportAction, suggestions, dismissSuggestion } = useAI();
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -289,6 +292,13 @@ export default function CalendarPage() {
   const handleCreateEvent = async () => {
     if (!newSummary.trim() || !newDate) return;
     const startTime = `${newDate}T${newTime}:00`;
+
+    reportAction("event_created", {
+      summary: newSummary.trim(),
+      startTime: startTime,
+      duration: newDuration,
+    });
+
     try {
       const created = await createCalendarEvent(accessToken, {
         summary: newSummary.trim(),
@@ -321,6 +331,8 @@ export default function CalendarPage() {
 
   // Delete event
   const handleDeleteEvent = async (event: CalendarEvent) => {
+    reportAction("event_deleted", { summary: event.summary, eventId: event.id });
+
     if (event.id) {
       try {
         await deleteCalendarEvent(accessToken, event.id);
@@ -340,6 +352,7 @@ export default function CalendarPage() {
 
   // Click time slot to create event
   const handleTimeSlotClick = (day: Date, hour: number) => {
+    reportAction("timeslot_clicked", { day: format(day, "yyyy-MM-dd"), hour });
     setNewDate(format(day, "yyyy-MM-dd"));
     setNewTime(`${hour.toString().padStart(2, "0")}:00`);
     setShowCreateModal(true);
@@ -416,6 +429,27 @@ export default function CalendarPage() {
           </Button>
         </div>
       </div>
+
+      {/* AI Suggestion Banner */}
+      {(() => {
+        const activeSuggestion = suggestions.find((s) => !s.dismissed);
+        if (!activeSuggestion) return null;
+        return (
+          <div className="mb-4">
+            <AnimatePresence>
+              <AISuggestionBanner
+                suggestion={activeSuggestion.text}
+                type={activeSuggestion.type}
+                onDismiss={() => dismissSuggestion(activeSuggestion.id)}
+                actions={activeSuggestion.actions?.map((a) => ({
+                  label: a.label,
+                  onClick: () => dismissSuggestion(activeSuggestion.id),
+                }))}
+              />
+            </AnimatePresence>
+          </div>
+        );
+      })()}
 
       {/* Content */}
       {loading ? (
