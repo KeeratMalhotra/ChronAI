@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Check,
   Sparkles,
+  PartyPopper,
 } from "lucide-react";
 import { postOnboarding } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
@@ -58,9 +59,9 @@ const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
 
 const slideVariants = {
   enter: (dir: number) => ({
-    x: dir > 0 ? 100 : -100,
+    x: dir > 0 ? 120 : -120,
     opacity: 0,
-    scale: 0.96,
+    scale: 0.95,
   }),
   center: {
     x: 0,
@@ -68,11 +69,89 @@ const slideVariants = {
     scale: 1,
   },
   exit: (dir: number) => ({
-    x: dir > 0 ? -100 : 100,
+    x: dir > 0 ? -120 : 120,
     opacity: 0,
-    scale: 0.96,
+    scale: 0.95,
   }),
 };
+
+/* ------------------------------------------------------------------ */
+/* Confetti Component                                                   */
+/* ------------------------------------------------------------------ */
+
+interface ConfettiPiece {
+  id: number;
+  x: number;
+  delay: number;
+  duration: number;
+  color: string;
+  size: number;
+  rotation: number;
+}
+
+function Confetti({ active }: { active: boolean }) {
+  const [pieces, setPieces] = useState<ConfettiPiece[]>([]);
+
+  useEffect(() => {
+    if (active) {
+      const colors = [
+        "#6366f1",
+        "#8b5cf6",
+        "#a78bfa",
+        "#818cf8",
+        "#34d399",
+        "#fbbf24",
+        "#f472b6",
+        "#22d3ee",
+      ];
+      const newPieces: ConfettiPiece[] = Array.from({ length: 50 }, (_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        delay: Math.random() * 0.8,
+        duration: 2 + Math.random() * 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: 4 + Math.random() * 8,
+        rotation: Math.random() * 360,
+      }));
+      setPieces(newPieces);
+    }
+  }, [active]);
+
+  if (!active || pieces.length === 0) return null;
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">
+      {pieces.map((piece) => (
+        <motion.div
+          key={piece.id}
+          initial={{
+            x: `${piece.x}vw`,
+            y: "-10%",
+            rotate: piece.rotation,
+            opacity: 1,
+          }}
+          animate={{
+            y: "110vh",
+            rotate: piece.rotation + 720,
+            opacity: [1, 1, 0],
+          }}
+          transition={{
+            duration: piece.duration,
+            delay: piece.delay,
+            ease: [0.25, 0.46, 0.45, 0.94],
+          }}
+          style={{
+            position: "absolute",
+            width: piece.size,
+            height: piece.size,
+            backgroundColor: piece.color,
+            borderRadius: piece.size > 8 ? "2px" : "50%",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
@@ -88,6 +167,7 @@ export default function OnboardingPage() {
   const [direction, setDirection] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Form state
   const [role, setRole] = useState("");
@@ -119,6 +199,7 @@ export default function OnboardingPage() {
   const handleSubmit = async () => {
     setSubmitting(true);
     setSubmitError("");
+    setShowConfetti(true);
     try {
       await postOnboarding(accessToken, {
         role,
@@ -135,8 +216,12 @@ export default function OnboardingPage() {
           .filter(Boolean),
         onboarding_complete: true,
       });
-      router.push("/dashboard");
+      // Brief delay to show confetti before navigating
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 1500);
     } catch (err) {
+      setShowConfetti(false);
       setSubmitError(
         err instanceof Error
           ? err.message
@@ -152,11 +237,13 @@ export default function OnboardingPage() {
 
   const ProgressBar = () => (
     <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-center gap-2 px-6 py-6">
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)]/80 px-4 py-2.5 backdrop-blur-xl">
         {Array.from({ length: totalSteps }, (_, i) => (
           <div key={i} className="relative flex items-center">
-            <div className="relative h-1.5 overflow-hidden rounded-full bg-[var(--border-subtle)]"
-              style={{ width: i === step ? "2.5rem" : "1rem" }}
+            <motion.div
+              className="relative h-1.5 overflow-hidden rounded-full bg-[var(--border-subtle)]"
+              animate={{ width: i === step ? "2.5rem" : "1rem" }}
+              transition={spring}
             >
               <motion.div
                 className="absolute inset-y-0 left-0 rounded-full bg-accent-500"
@@ -164,13 +251,13 @@ export default function OnboardingPage() {
                 animate={{ width: i <= step ? "100%" : "0%" }}
                 transition={spring}
               />
-            </div>
+            </motion.div>
           </div>
         ))}
+        <span className="ml-3 font-mono text-xs text-[var(--text-tertiary)]">
+          {step + 1}/{totalSteps}
+        </span>
       </div>
-      <span className="ml-3 font-mono text-xs text-[var(--text-tertiary)]">
-        {step + 1}/{totalSteps}
-      </span>
     </div>
   );
 
@@ -207,7 +294,7 @@ export default function OnboardingPage() {
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setRole(r.id)}
-              className={`flex flex-col items-center gap-3 rounded-2xl border p-5 transition-colors duration-150 ${
+              className={`relative flex flex-col items-center gap-3 rounded-2xl border p-5 transition-all duration-200 ${
                 active
                   ? "border-accent-500/60 bg-accent-500/10 text-[var(--text-primary)] shadow-glow-sm"
                   : "border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--border)] hover:bg-[var(--surface-hover)]"
@@ -218,10 +305,10 @@ export default function OnboardingPage() {
               {active && (
                 <motion.div
                   layoutId="role-check"
-                  className="absolute -top-1 -right-1"
+                  className="absolute -top-1.5 -right-1.5"
                   transition={spring}
                 >
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-500">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-500 shadow-glow-sm">
                     <Check className="h-3 w-3 text-white" />
                   </div>
                 </motion.div>
@@ -278,38 +365,18 @@ export default function OnboardingPage() {
           transition={{ ...spring, delay: 0.1 }}
           className="grid grid-cols-2 gap-4"
         >
-          <div>
-            <label className="mb-2 block text-sm font-medium text-[var(--text-secondary)]">
-              Work starts
-            </label>
-            <select
-              value={workStart}
-              onChange={(e) => setWorkStart(Number(e.target.value))}
-              className="w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition-all focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20"
-            >
-              {HOURS.map((h) => (
-                <option key={h.value} value={h.value}>
-                  {h.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-[var(--text-secondary)]">
-              Work ends
-            </label>
-            <select
-              value={workEnd}
-              onChange={(e) => setWorkEnd(Number(e.target.value))}
-              className="w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition-all focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20"
-            >
-              {HOURS.map((h) => (
-                <option key={h.value} value={h.value}>
-                  {h.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <TimeSelect
+            label="Work starts"
+            value={workStart}
+            onChange={setWorkStart}
+            delay={0}
+          />
+          <TimeSelect
+            label="Work ends"
+            value={workEnd}
+            onChange={setWorkEnd}
+            delay={0.05}
+          />
         </motion.div>
 
         <motion.div
@@ -318,38 +385,18 @@ export default function OnboardingPage() {
           transition={{ ...spring, delay: 0.2 }}
           className="grid grid-cols-2 gap-4"
         >
-          <div>
-            <label className="mb-2 block text-sm font-medium text-[var(--text-secondary)]">
-              Wake time
-            </label>
-            <select
-              value={wakeTime}
-              onChange={(e) => setWakeTime(Number(e.target.value))}
-              className="w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition-all focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20"
-            >
-              {HOURS.map((h) => (
-                <option key={h.value} value={h.value}>
-                  {h.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-[var(--text-secondary)]">
-              Sleep time
-            </label>
-            <select
-              value={sleepTime}
-              onChange={(e) => setSleepTime(Number(e.target.value))}
-              className="w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition-all focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20"
-            >
-              {HOURS.map((h) => (
-                <option key={h.value} value={h.value}>
-                  {h.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <TimeSelect
+            label="Wake time"
+            value={wakeTime}
+            onChange={setWakeTime}
+            delay={0.1}
+          />
+          <TimeSelect
+            label="Sleep time"
+            value={sleepTime}
+            onChange={setSleepTime}
+            delay={0.15}
+          />
         </motion.div>
 
         <motion.div
@@ -366,7 +413,7 @@ export default function OnboardingPage() {
             onChange={(e) => setDailyRoutine(e.target.value)}
             rows={3}
             placeholder="e.g. Morning run, deep work 9-12, meetings after lunch..."
-            className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none transition-all focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20"
+            className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none transition-all duration-200 focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20"
           />
         </motion.div>
       </div>
@@ -411,7 +458,7 @@ export default function OnboardingPage() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => togglePriority(p)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors duration-150 ${
+                className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
                   active
                     ? "border-accent-500/60 bg-accent-500/15 text-accent-300 shadow-glow-sm"
                     : "border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--border)] hover:bg-[var(--surface-hover)]"
@@ -419,8 +466,8 @@ export default function OnboardingPage() {
               >
                 {active && (
                   <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
+                    initial={{ scale: 0, rotate: -90 }}
+                    animate={{ scale: 1, rotate: 0 }}
                     transition={spring}
                   >
                     <Check className="h-3.5 w-3.5" />
@@ -448,7 +495,7 @@ export default function OnboardingPage() {
             placeholder={
               "Ship my side project by March\nExercise 4x per week\nRead 2 books per month"
             }
-            className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none transition-all focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20"
+            className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none transition-all duration-200 focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20"
           />
         </motion.div>
       </div>
@@ -467,6 +514,14 @@ export default function OnboardingPage() {
         transition={spring}
         className="mb-10 text-center"
       >
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ ...spring, delay: 0.1 }}
+          className="mb-4 inline-flex"
+        >
+          <PartyPopper className="h-8 w-8 text-accent-400" />
+        </motion.div>
         <h2 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-4xl">
           You are all set!
         </h2>
@@ -509,23 +564,23 @@ export default function OnboardingPage() {
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-accent-gradient px-6 py-4 text-base font-semibold text-white shadow-glow transition-shadow duration-300 hover:shadow-glow-lg disabled:opacity-50"
+          className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-accent-gradient px-6 py-4 text-base font-semibold text-white shadow-glow transition-all duration-300 hover:shadow-glow-lg hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100"
         >
-          {/* Sparkle glow effect */}
+          {/* Shimmer glow effect */}
           <span className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
           </span>
           <Sparkles className="relative h-4.5 w-4.5" />
           <span className="relative">
-            {submitting ? "Setting up..." : "Start using ChronAI"}
+            {submitting ? "Setting up your workspace..." : "Start using ChronAI"}
           </span>
         </button>
       </motion.div>
 
       {submitError && (
         <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
           className="mt-4 text-center text-sm text-danger-400"
         >
           {submitError}
@@ -542,10 +597,14 @@ export default function OnboardingPage() {
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[var(--bg)]">
+      {/* Confetti celebration */}
+      <Confetti active={showConfetti} />
+
       {/* Subtle animated gradient background */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-[25%] left-[30%] h-[500px] w-[500px] rounded-full bg-accent-500/[0.06] blur-[100px] animate-breathe" />
         <div className="absolute -bottom-[15%] right-[20%] h-[400px] w-[400px] rounded-full bg-accent-700/[0.04] blur-[80px] animate-float" />
+        <div className="absolute top-[50%] -left-[10%] h-[300px] w-[300px] rounded-full bg-violet-500/[0.03] blur-[60px] animate-float" />
       </div>
 
       <ProgressBar />
@@ -595,6 +654,61 @@ export default function OnboardingPage() {
 /* ------------------------------------------------------------------ */
 /* Subcomponents                                                        */
 /* ------------------------------------------------------------------ */
+
+function TimeSelect({
+  label,
+  value,
+  onChange,
+  delay = 0,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...{ type: "spring" as const, stiffness: 300, damping: 30 }, delay }}
+    >
+      <label className="mb-2 block text-sm font-medium text-[var(--text-secondary)]">
+        {label}
+      </label>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 pr-10 text-sm text-[var(--text-primary)] outline-none transition-all duration-200 focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20 cursor-pointer"
+        >
+          {HOURS.map((h) => (
+            <option key={h.value} value={h.value}>
+              {h.label}
+            </option>
+          ))}
+        </select>
+        {/* Custom dropdown arrow */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            className="text-[var(--text-tertiary)]"
+          >
+            <path
+              d="M3 4.5L6 7.5L9 4.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
