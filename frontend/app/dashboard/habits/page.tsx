@@ -201,7 +201,7 @@ function HabitCard({
               onClick={() => setMenuOpen(!menuOpen)}
               className="rounded-md p-1 text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]"
             >
-              <MoreHorizontal size={16} />
+              <MoreHorizontal size={16} strokeWidth={1.5} />
             </button>
             <AnimatePresence>
               {menuOpen && (
@@ -229,7 +229,7 @@ function HabitCard({
 
         {/* Streak display */}
         <div className="flex items-center gap-2">
-          <Flame size={18} className="text-orange-400" />
+          <Flame size={18} strokeWidth={1.5} className="text-orange-400" />
           <span className="text-xl font-bold text-[var(--text-primary)] tabular-nums">
             {streakDisplay}
           </span>
@@ -360,15 +360,15 @@ export default function HabitsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-6"
+        className="space-y-8"
       >
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success-500/10">
-              <Flame size={20} className="text-success-500" />
+              <Flame size={20} strokeWidth={1.5} className="text-success-500" />
             </div>
-            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+            <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
               Habits
             </h1>
           </div>
@@ -397,12 +397,12 @@ export default function HabitsPage() {
         {!loading && habits.length === 0 && (
           <Card hover={false} className="flex flex-col items-center py-16 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
-              <Flame size={28} className="text-emerald-500" />
+              <Flame size={28} strokeWidth={1.5} className="text-emerald-500" />
             </div>
             <h3 className="mt-4 text-lg font-semibold text-[var(--text-primary)]">
               No habits yet
             </h3>
-            <p className="mt-1 max-w-sm text-sm text-[var(--text-tertiary)]">
+            <p className="mt-1 max-w-sm text-sm font-normal leading-relaxed text-[var(--text-tertiary)]">
               Start building positive routines. Create your first habit and track
               your streaks over time.
             </p>

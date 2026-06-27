@@ -51,7 +51,7 @@ export default function TopBar({
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="flex h-14 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg)]/80 px-4 backdrop-blur-md md:px-6"
+      className="flex h-14 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg)]/90 px-4 backdrop-blur-sm md:px-6"
     >
       {/* Left section: mobile menu + page title */}
       <div className="flex items-center gap-3">
@@ -63,7 +63,7 @@ export default function TopBar({
             className="rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] md:hidden"
             aria-label="Open menu"
           >
-            <Menu size={20} />
+            <Menu size={20} strokeWidth={1.5} />
           </motion.button>
         )}
         <motion.h1
@@ -86,7 +86,7 @@ export default function TopBar({
           whileTap={{ scale: 0.98 }}
           className="hidden items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text-tertiary)] transition-all duration-200 hover:border-[var(--text-tertiary)]/30 hover:bg-[var(--surface-hover)] hover:text-[var(--text-secondary)] hover:shadow-sm sm:flex"
         >
-          <Search size={14} />
+          <Search size={14} strokeWidth={1.5} />
           <span>Search</span>
           <kbd className="ml-2 rounded-md bg-[var(--bg-tertiary)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
             &#8984;K

@@ -46,17 +46,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <motion.input
           ref={ref}
           id={inputId}
-          whileFocus={{ scale: 1.002 }}
           transition={springTransition}
           className={`
             h-10 w-full rounded-lg border px-3 text-sm
             bg-[var(--surface)] text-[var(--text-primary)]
             border-[var(--border)] placeholder:text-[var(--text-tertiary)]
             focus:outline-none focus:border-[var(--border-focus)]
-            focus:ring-2 focus:ring-[var(--accent)]/15
-            transition-all duration-200 ease-spring
+            focus:ring-2 focus:ring-[var(--accent)]/10
+            transition-colors duration-200
             disabled:opacity-50 disabled:cursor-not-allowed
-            ${error ? "border-danger-400 focus:border-danger-400 focus:ring-danger-400/15" : ""}
+            ${error ? "border-danger-400 focus:border-danger-400 focus:ring-danger-400/10" : ""}
             ${className}
           `}
           {...(props as Record<string, unknown>)}

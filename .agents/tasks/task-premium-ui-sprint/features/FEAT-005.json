@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-005",
+  "type": "feat",
+  "description": "Dashboard Empty State & Welcome Experience: When user opens dashboard with no data (no tasks, events, habits), show an engaging welcome state with a warm greeting, quick action cards, AI suggestion chips, and a small onboarding checklist widget. The page should feel alive even with zero data.",
+  "status": "pending",
+  "steps": [
+    "1. In app/dashboard/page.tsx, detect when all data arrays are empty (tasks.length === 0 && events.length === 0 && habits.length === 0) after loading completes.",
+    "2. When empty, render a dedicated WelcomeState section instead of the current stats/schedule/tasks sections. This should include:",
+    "3. A warm personalized greeting: 'Welcome back, {firstName}! Let's get your day started.' with a subtle wave or sparkle animation.",
+    "4. Quick Action Cards (3-4 cards in a grid): 'Create your first task' (links to /dashboard/tasks with create modal trigger), 'Check your calendar' (links to /dashboard/calendar), 'Start a habit' (links to /dashboard/habits), 'Talk to AI' (opens chat panel). Each card should have an icon, title, and short description. Matte flat design with subtle hover color shift.",
+    "5. AI Suggestion Chips: A row of clickable pill-shaped buttons like 'Plan my week', 'Suggest a routine', 'Help me focus', 'Organize my tasks'. When clicked, open the chat panel (setChatOpen(true)).",
+    "6. A small onboarding checklist widget showing progress: checkboxes for 'Create a task', 'Add a calendar event', 'Start a habit', 'Try focus mode'. Check marks should reflect actual data (if tasks > 0, mark that done). Persist checklist dismissal in localStorage.",
+    "7. Keep the existing data-populated view as-is for when the user has data. The empty state only shows when ALL data sources return empty.",
+    "8. Style everything with the matte Notion-style design: warm colors, no glass, flat cards, readable text, generous spacing."
+  ],
+  "acceptance_criteria": [
+    "npm run build passes without errors",
+    "npm run lint passes",
+    "When dashboard has no data, a warm welcome state is shown instead of blank content",
+    "Quick action cards are present and link to appropriate pages",
+    "AI suggestion chips open the chat panel when clicked",
+    "An onboarding checklist shows progress based on actual data",
+    "When data exists, the normal dashboard view shows (not the welcome state)",
+    "Design follows matte/flat Notion style with warm accents"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

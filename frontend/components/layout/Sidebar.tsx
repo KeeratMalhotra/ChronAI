@@ -69,14 +69,11 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     <div className="flex h-full flex-col">
       {/* Logo / Brand */}
       <div className="flex h-16 items-center gap-2.5 px-4">
-        <motion.div
-          whileHover={{ scale: 1.05, rotate: 2 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 400, damping: 15 }}
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-accent-gradient shadow-md shadow-accent-500/20"
+        <div
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-accent-gradient"
         >
           <span className="text-sm font-bold text-white select-none">C</span>
-        </motion.div>
+        </div>
         <AnimatePresence mode="wait">
           {!collapsed && (
             <motion.span
@@ -132,14 +129,11 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               )}
 
               <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 className="relative flex-shrink-0"
               >
                 <Icon
                   size={20}
-                  strokeWidth={active ? 2.2 : 1.7}
+                  strokeWidth={active ? 2 : 1.5}
                 />
               </motion.div>
 
@@ -184,9 +178,9 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             className="flex-shrink-0"
           >
             {theme === "dark" ? (
-              <Moon size={20} strokeWidth={1.7} />
+              <Moon size={20} strokeWidth={1.5} />
             ) : (
-              <Sun size={20} strokeWidth={1.7} />
+              <Sun size={20} strokeWidth={1.5} />
             )}
           </motion.div>
           <AnimatePresence mode="wait">
@@ -215,7 +209,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className="flex-shrink-0"
           >
-            <ChevronsLeft size={20} strokeWidth={1.7} />
+            <ChevronsLeft size={20} strokeWidth={1.5} />
           </motion.div>
           <AnimatePresence mode="wait">
             {!collapsed && (

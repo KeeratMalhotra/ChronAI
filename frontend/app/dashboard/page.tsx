@@ -174,7 +174,7 @@ export default function DashboardPage() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="space-y-8"
+        className="space-y-10"
       >
         {/* Greeting */}
         <motion.div variants={itemVariants}>
@@ -184,7 +184,7 @@ export default function DashboardPage() {
               {firstName}
             </span>
           </h1>
-          <p className="mt-1.5 text-sm text-[var(--text-tertiary)]">
+          <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-tertiary)] font-normal">
             {todayFormatted}
           </p>
         </motion.div>
@@ -211,7 +211,7 @@ export default function DashboardPage() {
                   <div
                     className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.bgColor}`}
                   >
-                    <Icon size={20} className={stat.color} />
+                    <Icon size={20} strokeWidth={1.5} className={stat.color} />
                   </div>
                   <div>
                     <p className="text-2xl font-bold tabular-nums text-[var(--text-primary)]">
@@ -234,7 +234,7 @@ export default function DashboardPage() {
         {/* Today's Schedule */}
         <motion.section variants={itemVariants}>
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            <h2 className="text-base font-semibold tracking-tight text-[var(--text-primary)]">
               Today&apos;s Schedule
             </h2>
             <Link
@@ -260,6 +260,7 @@ export default function DashboardPage() {
               <Card hover={false} className="py-8 text-center">
                 <Calendar
                   size={24}
+                  strokeWidth={1.5}
                   className="mx-auto mb-2 text-[var(--text-tertiary)]"
                 />
                 <p className="text-sm text-[var(--text-tertiary)]">
@@ -299,7 +300,7 @@ export default function DashboardPage() {
         {/* Recent Tasks */}
         <motion.section variants={itemVariants}>
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            <h2 className="text-base font-semibold tracking-tight text-[var(--text-primary)]">
               Recent Tasks
             </h2>
             <Link
@@ -325,6 +326,7 @@ export default function DashboardPage() {
               <Card hover={false} className="py-8 text-center">
                 <Sparkles
                   size={24}
+                  strokeWidth={1.5}
                   className="mx-auto mb-2 text-[var(--text-tertiary)]"
                 />
                 <p className="text-sm text-[var(--text-tertiary)]">

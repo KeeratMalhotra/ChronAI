@@ -1,0 +1,7 @@
+{
+  "task_id": "task-premium-ui-sprint",
+  "task_description": "Premium UI rebuild sprint: matte Notion-style design overhaul, task CRUD deepening, Pomodoro focus mode, Spotify mini player integration, and dashboard empty state experience.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005"],
+  "blocked_reason": null
+}

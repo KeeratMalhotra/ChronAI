@@ -353,14 +353,14 @@ export default function CalendarPage() {
       className="h-full flex flex-col"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-500/10">
-              <CalendarIcon size={20} className="text-accent-500" />
+              <CalendarIcon size={20} strokeWidth={1.5} className="text-accent-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+              <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
                 {view === "month" && format(currentDate, "MMMM yyyy")}
                 {view === "week" &&
                   `${format(startOfWeek(currentDate), "MMM d")} - ${format(
@@ -377,7 +377,7 @@ export default function CalendarPage() {
               onClick={navigatePrev}
               className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[var(--surface-hover)] text-[var(--text-tertiary)] transition-colors"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={16} strokeWidth={1.5} />
             </button>
             <button
               onClick={goToToday}
@@ -389,7 +389,7 @@ export default function CalendarPage() {
               onClick={navigateNext}
               className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[var(--surface-hover)] text-[var(--text-tertiary)] transition-colors"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={16} strokeWidth={1.5} />
             </button>
           </div>
         </div>

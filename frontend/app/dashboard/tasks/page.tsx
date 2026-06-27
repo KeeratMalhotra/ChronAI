@@ -582,12 +582,12 @@ export default function TasksPage() {
       className="h-full flex flex-col"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning-500/10">
-            <CheckSquare size={20} className="text-warning-500" />
+            <CheckSquare size={20} strokeWidth={1.5} className="text-warning-500" />
           </div>
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
             Tasks
           </h1>
         </div>
@@ -641,7 +641,7 @@ export default function TasksPage() {
         </div>
       ) : tasks.length === 0 ? (
         <EmptyState
-          icon={<CheckSquare size={28} className="text-[var(--text-tertiary)]" />}
+          icon={<CheckSquare size={28} strokeWidth={1.5} className="text-[var(--text-tertiary)]" />}
           title="No tasks yet"
           description="Create your first task to get started. Organize them in a kanban board or list view."
           action={

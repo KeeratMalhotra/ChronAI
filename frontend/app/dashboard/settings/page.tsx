@@ -68,14 +68,14 @@ export default function SettingsPage() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="space-y-6"
+      className="space-y-8"
     >
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-500/10">
-          <Settings size={20} className="text-[var(--text-secondary)]" />
+          <Settings size={20} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
         </div>
-        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
           Settings
         </h1>
       </div>
@@ -83,7 +83,7 @@ export default function SettingsPage() {
       {/* Profile Section */}
       <Card hover={false} className="p-6">
         <div className="flex items-center gap-3 mb-4">
-          <User size={18} className="text-[var(--text-secondary)]" />
+          <User size={18} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
           <h2 className="text-base font-semibold text-[var(--text-primary)]">
             Profile
           </h2>
@@ -119,7 +119,7 @@ export default function SettingsPage() {
       {/* Appearance Section */}
       <Card hover={false} className="p-6">
         <div className="flex items-center gap-3 mb-4">
-          <Palette size={18} className="text-[var(--text-secondary)]" />
+          <Palette size={18} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
           <h2 className="text-base font-semibold text-[var(--text-primary)]">
             Appearance
           </h2>
@@ -128,9 +128,9 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {theme === "dark" ? (
-                <Moon size={16} className="text-[var(--text-secondary)]" />
+                <Moon size={16} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
               ) : (
-                <Sun size={16} className="text-[var(--text-secondary)]" />
+                <Sun size={16} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
               )}
               <div>
                 <p className="text-sm text-[var(--text-primary)]">Theme</p>
@@ -150,7 +150,7 @@ export default function SettingsPage() {
       {/* AI Preferences Section */}
       <Card hover={false} className="p-6">
         <div className="flex items-center gap-3 mb-4">
-          <Sparkles size={18} className="text-[var(--text-secondary)]" />
+          <Sparkles size={18} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
           <h2 className="text-base font-semibold text-[var(--text-primary)]">
             AI Preferences
           </h2>
@@ -184,7 +184,7 @@ export default function SettingsPage() {
               <p className="text-sm text-[var(--text-primary)]">
                 AI Suggestions
               </p>
-              <p className="text-xs text-[var(--text-tertiary)]">
+              <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">
                 Show AI-powered suggestions throughout the app
               </p>
             </div>
@@ -200,7 +200,7 @@ export default function SettingsPage() {
               <p className="text-sm text-[var(--text-primary)]">
                 Proactive Notifications
               </p>
-              <p className="text-xs text-[var(--text-tertiary)]">
+              <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">
                 Let AI proactively suggest actions and reminders
               </p>
             </div>
@@ -215,7 +215,7 @@ export default function SettingsPage() {
       {/* Integrations Section */}
       <Card hover={false} className="p-6">
         <div className="flex items-center gap-3 mb-4">
-          <Link2 size={18} className="text-[var(--text-secondary)]" />
+          <Link2 size={18} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
           <h2 className="text-base font-semibold text-[var(--text-primary)]">
             Integrations
           </h2>
@@ -252,7 +252,7 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
-            <CheckCircle2 size={16} className="text-emerald-500" />
+            <CheckCircle2 size={16} strokeWidth={1.5} className="text-emerald-500" />
           </div>
 
           {["Calendar", "Tasks", "Gmail"].map((service) => (
@@ -273,7 +273,7 @@ export default function SettingsPage() {
       {/* Keyboard Shortcuts Section */}
       <Card hover={false} className="p-6">
         <div className="flex items-center gap-3 mb-4">
-          <Keyboard size={18} className="text-[var(--text-secondary)]" />
+          <Keyboard size={18} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
           <h2 className="text-base font-semibold text-[var(--text-primary)]">
             Keyboard Shortcuts
           </h2>

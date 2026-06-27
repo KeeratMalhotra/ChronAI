@@ -61,9 +61,9 @@ export default function FocusMode({ active, taskName, onStop }: FocusModeProps) 
   const timeDisplay = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
   const ambientOptions: { key: AmbientOption; icon: React.ReactNode; label: string }[] = [
-    { key: "rain", icon: <Cloud size={18} />, label: "Rain" },
-    { key: "cafe", icon: <Coffee size={18} />, label: "Cafe" },
-    { key: "silence", icon: <VolumeX size={18} />, label: "Silence" },
+    { key: "rain", icon: <Cloud size={18} strokeWidth={1.5} />, label: "Rain" },
+    { key: "cafe", icon: <Coffee size={18} strokeWidth={1.5} />, label: "Cafe" },
+    { key: "silence", icon: <VolumeX size={18} strokeWidth={1.5} />, label: "Silence" },
   ];
 
   return (
@@ -124,9 +124,9 @@ export default function FocusMode({ active, taskName, onStop }: FocusModeProps) 
                 aria-label={paused ? "Resume" : "Pause"}
               >
                 {paused ? (
-                  <PlayCircle size={24} />
+                  <PlayCircle size={24} strokeWidth={1.5} />
                 ) : (
-                  <PauseCircle size={24} />
+                  <PauseCircle size={24} strokeWidth={1.5} />
                 )}
               </button>
               <button
@@ -134,7 +134,7 @@ export default function FocusMode({ active, taskName, onStop }: FocusModeProps) 
                 className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500/20 text-red-500 dark:text-red-300 ring-1 ring-red-500/30 transition hover:bg-red-500/30"
                 aria-label="Stop"
               >
-                <StopCircle size={24} />
+                <StopCircle size={24} strokeWidth={1.5} />
               </button>
             </div>
 

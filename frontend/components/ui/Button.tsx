@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { forwardRef } from "react";
 import { motion, type HTMLMotionProps } from "framer-motion";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
@@ -18,13 +18,13 @@ interface ButtonProps
 
 const variantStyles: Record<Variant, string> = {
   primary:
-    "bg-accent-500 text-white hover:bg-accent-600 active:bg-accent-700 shadow-sm hover:shadow-md",
+    "bg-accent-500 text-white hover:bg-accent-600 active:bg-accent-700",
   secondary:
-    "bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--surface-hover)] hover:border-[var(--text-tertiary)] active:bg-[var(--bg-tertiary)]",
+    "bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--surface-hover)] hover:border-[var(--text-tertiary)]/30 active:bg-[var(--bg-tertiary)]",
   ghost:
     "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] active:bg-[var(--bg-tertiary)]",
   danger:
-    "bg-danger-500 text-white hover:bg-danger-600 active:bg-danger-700 shadow-sm hover:shadow-md",
+    "bg-danger-500 text-white hover:bg-danger-600 active:bg-danger-700",
 };
 
 const sizeStyles: Record<Size, string> = {
@@ -37,12 +37,6 @@ const iconOnlySizeStyles: Record<Size, string> = {
   sm: "h-8 w-8 rounded-lg",
   md: "h-9 w-9 rounded-lg",
   lg: "h-11 w-11 rounded-xl",
-};
-
-const springTransition = {
-  type: "spring" as const,
-  stiffness: 300,
-  damping: 30,
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -62,13 +56,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <motion.button
         ref={ref}
-        whileHover={{ scale: 1.015 }}
-        whileTap={{ scale: 0.97 }}
-        transition={springTransition}
         disabled={disabled || loading}
         className={`
           inline-flex items-center justify-center font-medium
-          transition-all duration-200 ease-spring focus-ring
+          transition-colors duration-200 ease-out focus-ring
           disabled:opacity-50 disabled:pointer-events-none
           select-none cursor-pointer
           ${variantStyles[variant]}

@@ -24,9 +24,9 @@ const config: Config = {
           700: "#3f3f46",
           750: "#2e2e33",
           800: "#27272a",
-          850: "#1e1e20",
-          900: "#141415",
-          950: "#0a0a0b",
+          850: "#232326",
+          900: "#18181b",
+          950: "#0f0f10",
         },
         // Primary accent: indigo/violet spectrum
         accent: {
@@ -79,10 +79,10 @@ const config: Config = {
         },
         // Legacy tokens for backward compatibility
         base: {
-          DEFAULT: "#0a0a0b",
-          950: "#0a0a0b",
-          900: "#141415",
-          850: "#1e1e20",
+          DEFAULT: "#0f0f10",
+          950: "#0f0f10",
+          900: "#18181b",
+          850: "#232326",
           800: "#27272a",
           700: "#3f3f46",
           600: "#52525b",
@@ -94,9 +94,9 @@ const config: Config = {
           blue: "#818cf8",
         },
         dark: {
-          900: "#0a0a0b",
-          800: "#141415",
-          700: "#1e1e20",
+          900: "#0f0f10",
+          800: "#18181b",
+          700: "#232326",
           600: "#27272a",
         },
       },
@@ -140,26 +140,26 @@ const config: Config = {
         "4xl": "2rem",
       },
       boxShadow: {
-        // Notion-style subtle shadows
-        xs: "0 1px 2px 0 rgba(0, 0, 0, 0.03)",
-        sm: "0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02)",
-        md: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03)",
-        lg: "0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.03)",
-        xl: "0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03)",
-        "2xl": "0 25px 50px -12px rgba(0, 0, 0, 0.15)",
-        // Accent glow effects
-        glow: "0 0 20px -4px rgba(99, 102, 241, 0.25)",
-        "glow-sm": "0 0 10px -2px rgba(99, 102, 241, 0.2)",
-        "glow-lg": "0 0 40px -8px rgba(99, 102, 241, 0.3)",
-        "glow-accent": "0 0 24px -4px rgba(99, 102, 241, 0.3)",
+        // Notion-style minimal shadows
+        xs: "0 1px 2px 0 rgba(0, 0, 0, 0.02)",
+        sm: "0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.02)",
+        md: "0 2px 4px -1px rgba(0, 0, 0, 0.04), 0 1px 3px -1px rgba(0, 0, 0, 0.02)",
+        lg: "0 4px 8px -2px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.02)",
+        xl: "0 8px 16px -4px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.02)",
+        "2xl": "0 16px 32px -8px rgba(0, 0, 0, 0.1)",
+        // Subtle accent glow (reduced)
+        glow: "0 0 12px -4px rgba(99, 102, 241, 0.12)",
+        "glow-sm": "0 0 6px -2px rgba(99, 102, 241, 0.1)",
+        "glow-lg": "0 0 20px -6px rgba(99, 102, 241, 0.15)",
+        "glow-accent": "0 0 12px -4px rgba(99, 102, 241, 0.15)",
         // Surface shadows
         panel:
-          "0 16px 48px -16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03)",
-        rim: "inset 0 1px 0 0 rgba(255, 255, 255, 0.04)",
-        "inner-sm": "inset 0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-        // Card hover shadow
+          "0 8px 24px -8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.02)",
+        rim: "inset 0 1px 0 0 rgba(255, 255, 255, 0.02)",
+        "inner-sm": "inset 0 1px 2px 0 rgba(0, 0, 0, 0.03)",
+        // Card hover shadow (subtle)
         "card-hover":
-          "0 8px 24px -8px rgba(0, 0, 0, 0.12), 0 2px 8px -2px rgba(0, 0, 0, 0.05)",
+          "0 2px 8px -2px rgba(0, 0, 0, 0.06), 0 1px 3px -1px rgba(0, 0, 0, 0.03)",
       },
       backgroundImage: {
         "accent-gradient":
