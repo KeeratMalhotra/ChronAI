@@ -18,6 +18,7 @@ import {
   BookOpen,
   Plus,
   Timer,
+  Zap,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -37,6 +38,7 @@ import {
 } from "@/lib/api";
 import Link from "next/link";
 import { fetchSuggestions } from "@/lib/api-extended";
+import AutoPilotPanel from "@/components/autopilot/AutoPilotPanel";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -143,6 +145,9 @@ export default function DashboardPage() {
 
   // Quick Actions FAB
   const [fabOpen, setFabOpen] = useState(false);
+
+  // Auto-Pilot panel
+  const [autopilotOpen, setAutopilotOpen] = useState(false);
 
   // Onboarding checklist
   const [checklistDismissed, setChecklistDismissed] = useState(false);
@@ -554,6 +559,36 @@ export default function DashboardPage() {
               })}
             </motion.div>
 
+            {/* Plan My Day - Auto-Pilot */}
+            <motion.div variants={itemVariants}>
+              <button
+                onClick={() => setAutopilotOpen(true)}
+                className="w-full group"
+              >
+                <Card
+                  hover={false}
+                  className="flex items-center gap-4 p-5 transition-all hover:border-accent-500/30 hover:shadow-lg hover:shadow-accent-500/5"
+                >
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500/20 to-purple-500/20">
+                    <Zap size={20} strokeWidth={1.5} className="text-accent-500" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">
+                      Plan My Day
+                    </p>
+                    <p className="text-xs text-[var(--text-tertiary)]">
+                      Let AI optimize your schedule, block focus time, and organize tasks
+                    </p>
+                  </div>
+                  <ArrowRight
+                    size={16}
+                    strokeWidth={1.5}
+                    className="text-[var(--text-tertiary)] transition-transform group-hover:translate-x-1"
+                  />
+                </Card>
+              </button>
+            </motion.div>
+
             {/* AI Suggestions */}
             {suggestions.length > 0 && (
               <motion.section variants={itemVariants}>
@@ -827,6 +862,12 @@ export default function DashboardPage() {
           </motion.div>
         </motion.button>
       </div>
+
+      {/* Auto-Pilot Panel */}
+      <AutoPilotPanel
+        open={autopilotOpen}
+        onClose={() => setAutopilotOpen(false)}
+      />
 
       {/* Focus Mode overlay */}
       <FocusMode

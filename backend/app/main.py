@@ -26,6 +26,7 @@ from app.agents.habits import HabitAgent
 from app.agents.review import ReviewAgent, generate_weekly_review
 from app.api.onboarding import router as onboarding_router
 from app.api.briefing import router as briefing_router
+from app.api.autopilot import router as autopilot_router
 from app.auth import verify_google_token
 from app.config import settings
 from app.db.firestore import init_firestore
@@ -185,6 +186,7 @@ app.add_middleware(
 # Register API routers
 app.include_router(onboarding_router)
 app.include_router(briefing_router)
+app.include_router(autopilot_router)
 
 
 @app.websocket("/ws")

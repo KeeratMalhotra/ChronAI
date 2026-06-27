@@ -14,6 +14,7 @@ import {
   Moon,
   CheckCircle2,
   Music,
+  Zap,
 } from "lucide-react";
 
 import Image from "next/image";
@@ -40,6 +41,7 @@ export default function SettingsPage() {
   const [aiSuggestions, setAiSuggestions] = useState(true);
   const [proactiveNotifs, setProactiveNotifs] = useState(true);
   const [spotifyConnected, setSpotifyConnected] = useState(false);
+  const [autopilotMode, setAutopilotMode] = useState<"ask_permission" | "full_auto">("ask_permission");
 
   useEffect(() => {
     const stored = localStorage.getItem("chronai-ai-tone");
@@ -50,6 +52,8 @@ export default function SettingsPage() {
     if (notifs !== null) setProactiveNotifs(notifs === "true");
     const spotify = localStorage.getItem("chronai-spotify-connected");
     setSpotifyConnected(spotify === "true");
+    const autopilot = localStorage.getItem("chronai-autopilot-mode");
+    if (autopilot === "full_auto") setAutopilotMode("full_auto");
   }, []);
 
   const updateAiTone = (tone: AiTone) => {
@@ -65,6 +69,12 @@ export default function SettingsPage() {
   const updateProactiveNotifs = (val: boolean) => {
     setProactiveNotifs(val);
     localStorage.setItem("chronai-proactive-notifs", String(val));
+  };
+
+  const updateAutopilotMode = (fullAuto: boolean) => {
+    const mode = fullAuto ? "full_auto" : "ask_permission";
+    setAutopilotMode(mode);
+    localStorage.setItem("chronai-autopilot-mode", mode);
   };
 
   const toggleSpotifyConnection = () => {
@@ -224,6 +234,27 @@ export default function SettingsPage() {
             <Toggle
               checked={proactiveNotifs}
               onChange={updateProactiveNotifs}
+            />
+          </div>
+
+          {/* Auto-Pilot mode */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Zap size={16} strokeWidth={1.5} className="text-accent-500" />
+              <div>
+                <p className="text-sm text-[var(--text-primary)]">
+                  Auto-Pilot Mode
+                </p>
+                <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">
+                  {autopilotMode === "full_auto"
+                    ? "Full Auto: AI plans and executes automatically"
+                    : "Ask Permission: AI shows plan for your approval"}
+                </p>
+              </div>
+            </div>
+            <Toggle
+              checked={autopilotMode === "full_auto"}
+              onChange={updateAutopilotMode}
             />
           </div>
         </div>

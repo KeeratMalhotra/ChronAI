@@ -167,3 +167,45 @@ export async function fetchContextSuggestion(
     return { suggestion: null, type: "info", actions: [] };
   }
 }
+
+/**
+ * Fetch an AI-generated autopilot day plan.
+ */
+export async function fetchAutopilotPlan(
+  authToken: string
+): Promise<{ plan_id: string; actions: any[]; summary: string }> {
+  if (!authToken) throw new Error("No auth token provided");
+  const res = await fetch(`${getApiBase()}/api/autopilot/plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ auth_token: authToken }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to generate plan (${res.status})`);
+  }
+  return (await res.json()) as { plan_id: string; actions: any[]; summary: string };
+}
+
+/**
+ * Execute an autopilot day plan (create events, schedule tasks, etc).
+ */
+export async function executeAutopilotPlan(
+  authToken: string,
+  planId: string,
+  actions: any[]
+): Promise<{ plan_id: string; executed: number; failed: number; changes: any[] }> {
+  if (!authToken) throw new Error("No auth token provided");
+  const res = await fetch(`${getApiBase()}/api/autopilot/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      auth_token: authToken,
+      plan_id: planId,
+      actions,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to execute plan (${res.status})`);
+  }
+  return (await res.json()) as { plan_id: string; executed: number; failed: number; changes: any[] };
+}
