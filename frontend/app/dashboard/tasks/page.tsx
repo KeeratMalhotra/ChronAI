@@ -34,6 +34,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 
 import { fetchTasks, type TaskItem } from "@/lib/api";
+import {
+  createTask as apiCreateTask,
+  deleteTask as apiDeleteTask,
+  updateTask as apiUpdateTask,
+  fetchAiPriorities,
+} from "@/lib/api-extended";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -687,7 +693,7 @@ export default function TasksPage() {
   const inProgressTasks = tasks.filter((t) => t.status === "inprogress");
   const doneTasks = tasks.filter((t) => t.status === "done");
 
-  const handleCreateTask = () => {
+  const handleCreateTask = async () => {
     if (!newTitle.trim()) return;
     const task: LocalTask = {
       id: `task-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -698,17 +704,55 @@ export default function TasksPage() {
       status: "todo",
       priority: newPriority,
     };
+
+    // Calculate due_days_from_now from the due date
+    let dueDays = 7;
+    if (newDue) {
+      const diffMs = new Date(newDue).getTime() - Date.now();
+      dueDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    // Optimistically add to local state
     setTasks((prev) => [task, ...prev]);
     setNewTitle("");
     setNewNotes("");
     setNewDue("");
     setNewPriority("none");
     setShowCreateModal(false);
+
+    // Call API (fire-and-forget with error tolerance)
+    try {
+      const result = await apiCreateTask(accessToken, {
+        title: task.title,
+        notes: task.notes || "",
+        due_days_from_now: dueDays,
+      });
+      // If the API returns an ID, update the local task
+      if (result && result.id) {
+        setTasks((prev) =>
+          prev.map((t) => (t.id === task.id ? { ...t, id: result.id } : t))
+        );
+      }
+    } catch {
+      // API failed - task remains in local state only
+    }
   };
 
   const handleToggleTask = useCallback((taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) =>
+    setTasks((prev) => {
+      const task = prev.find((t) => t.id === taskId);
+      const newCompleted = task ? task.status !== "done" : false;
+
+      // Call API to sync completion state
+      if (accessToken && taskId) {
+        apiUpdateTask(accessToken, taskId, { completed: newCompleted }).catch(
+          () => {
+            // API failed - local state already updated
+          }
+        );
+      }
+
+      return prev.map((t) =>
         t.id === taskId
           ? {
               ...t,
@@ -716,9 +760,9 @@ export default function TasksPage() {
               completed: t.status !== "done",
             }
           : t
-      )
-    );
-  }, []);
+      );
+    });
+  }, [accessToken]);
 
   const handleUpdateTask = useCallback((updated: LocalTask) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
@@ -732,23 +776,89 @@ export default function TasksPage() {
   }, []);
 
   const handleDeleteTask = useCallback((taskId: string) => {
+    // Optimistically remove from local state
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     setSelectedTask(null);
     setDeleteTarget(null);
-  }, []);
 
-  const handleAiPrioritize = () => {
-    const priorityOrder: Record<LocalTask["priority"], number> = {
-      high: 0,
-      medium: 1,
-      low: 2,
-      none: 3,
-    };
-    setTasks((prev) =>
-      [...prev].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
-    );
-    setAiPrioritized(true);
-    setTimeout(() => setAiPrioritized(false), 2000);
+    // Call API to delete from Google Tasks
+    if (accessToken && taskId) {
+      apiDeleteTask(accessToken, taskId).catch(() => {
+        // API failed - task already removed locally
+      });
+    }
+  }, [accessToken]);
+
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const handleAiPrioritize = async () => {
+    if (!accessToken) {
+      // Fallback to local priority sort if no token
+      const priorityOrder: Record<LocalTask["priority"], number> = {
+        high: 0,
+        medium: 1,
+        low: 2,
+        none: 3,
+      };
+      setTasks((prev) =>
+        [...prev].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
+      );
+      setAiPrioritized(true);
+      setTimeout(() => setAiPrioritized(false), 2000);
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const result = await fetchAiPriorities(accessToken);
+      if (result.priorities && result.priorities.length > 0) {
+        // Reorder tasks based on AI priority ranking
+        const priorityMap = new Map<string, number>();
+        result.priorities.forEach((p: any, index: number) => {
+          const id = p.id || p.task_id || "";
+          const title = p.title || "";
+          if (id) priorityMap.set(id, index);
+          if (title) priorityMap.set(title, index);
+        });
+
+        setTasks((prev) => {
+          const sorted = [...prev].sort((a, b) => {
+            const aRank = priorityMap.get(a.id) ?? priorityMap.get(a.title) ?? 999;
+            const bRank = priorityMap.get(b.id) ?? priorityMap.get(b.title) ?? 999;
+            return aRank - bRank;
+          });
+          return sorted;
+        });
+      } else {
+        // Fallback to local priority sort
+        const priorityOrder: Record<LocalTask["priority"], number> = {
+          high: 0,
+          medium: 1,
+          low: 2,
+          none: 3,
+        };
+        setTasks((prev) =>
+          [...prev].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
+        );
+      }
+      setAiPrioritized(true);
+      setTimeout(() => setAiPrioritized(false), 2000);
+    } catch {
+      // Fallback to local sort on error
+      const priorityOrder: Record<LocalTask["priority"], number> = {
+        high: 0,
+        medium: 1,
+        low: 2,
+        none: 3,
+      };
+      setTasks((prev) =>
+        [...prev].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
+      );
+      setAiPrioritized(true);
+      setTimeout(() => setAiPrioritized(false), 2000);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   // Drag handlers
@@ -827,9 +937,10 @@ export default function TasksPage() {
             variant="ghost"
             size="sm"
             onClick={handleAiPrioritize}
+            disabled={aiLoading}
           >
             <Sparkles size={14} strokeWidth={1.5} />
-            {aiPrioritized ? "Prioritized!" : "Ask AI to Prioritize"}
+            {aiLoading ? "Analyzing..." : aiPrioritized ? "Prioritized!" : "Ask AI to Prioritize"}
           </Button>
           <Button
             size="sm"

@@ -394,6 +394,20 @@ async def trigger_nudge(
     }
 
 
+class CreateTaskRequest(BaseModel):
+    """Request body for creating a task."""
+    auth_token: str
+    title: str
+    notes: str = ""
+    due_days_from_now: int = 7
+
+
+class UpdateTaskRequest(BaseModel):
+    """Request body for updating/completing a task."""
+    auth_token: str
+    completed: bool = False
+
+
 @app.get("/api/tasks")
 async def get_tasks(auth_token: str = ""):
     """Get user's tasks from Google Tasks.
@@ -418,6 +432,128 @@ async def get_tasks(auth_token: str = ""):
         return {"tasks": tasks}
 
     return {"tasks": []}
+
+
+@app.post("/api/tasks")
+async def create_task(body: CreateTaskRequest):
+    """Create a new task in Google Tasks.
+
+    Args:
+        body: Validated JSON body with auth_token, title, notes, and due_days_from_now.
+
+    Returns:
+        The created task or error message.
+    """
+    if not body.auth_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    await verify_google_token(body.auth_token)
+
+    if mcp_client:
+        try:
+            result = await mcp_client.call_tool(
+                "google-tasks",
+                "create_task",
+                {
+                    "auth_token": body.auth_token,
+                    "title": body.title,
+                    "notes": body.notes,
+                    "due_days_from_now": body.due_days_from_now,
+                },
+            )
+            return result
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create task: {e}",
+            )
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="MCP client not available",
+    )
+
+
+@app.delete("/api/tasks/{task_id}")
+async def delete_task(task_id: str, auth_token: str = ""):
+    """Delete a task from Google Tasks.
+
+    Args:
+        task_id: The ID of the task to delete.
+        auth_token: Google OAuth token for authentication.
+
+    Returns:
+        Status indicating deletion success.
+    """
+    if not auth_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    await verify_google_token(auth_token)
+
+    if mcp_client:
+        try:
+            await mcp_client.call_tool(
+                "google-tasks",
+                "delete_task",
+                {"auth_token": auth_token, "task_id": task_id},
+            )
+            return {"status": "deleted"}
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete task: {e}",
+            )
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="MCP client not available",
+    )
+
+
+@app.patch("/api/tasks/{task_id}")
+async def update_task(task_id: str, body: UpdateTaskRequest):
+    """Update or complete a task in Google Tasks.
+
+    Args:
+        task_id: The ID of the task to update.
+        body: Validated JSON body with auth_token and completed flag.
+
+    Returns:
+        Status indicating update success.
+    """
+    if not body.auth_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    await verify_google_token(body.auth_token)
+
+    if mcp_client:
+        try:
+            if body.completed:
+                await mcp_client.call_tool(
+                    "google-tasks",
+                    "complete_task",
+                    {"auth_token": body.auth_token, "task_id": task_id},
+                )
+            return {"status": "updated"}
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to update task: {e}",
+            )
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="MCP client not available",
+    )
 
 
 @app.get("/api/calendar/events")
