@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Gmail Deep Integration + Google Slides Integration: Backend API endpoints and frontend UI for scanning inbox to extract action items, and generating presentation outlines from task context.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "1. Create backend endpoint POST /api/gmail/scan-inbox in backend/app/main.py (or a new router backend/app/api/gmail.py). It should: accept auth_token, use the Gmail MCP 'list_emails' + 'read_email' tools to fetch recent emails (last 10-20), then use Gemini to extract action items from email bodies. Return an array of suggested tasks with fields: email_id, email_subject, email_from, suggested_title, suggested_notes, and a source_email_id field for reply functionality.",
     "2. Create backend endpoint POST /api/gmail/reply in backend/app/main.py or the gmail router. It should accept auth_token, email_id, and body text, then use the Gmail MCP 'send_email' tool (or direct API) to send a reply to that email thread.",
@@ -32,5 +32,5 @@
     "cd /projects/sandbox/ChronAI/backend && python -m py_compile app/main.py"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All backend endpoints compile successfully. Frontend build and lint pass. Used direct Gmail API calls in the backend router instead of MCP subprocess for reliability. The Presentation icon from lucide-react works correctly. The SlidesGeneratorModal uses useState as an initializer hack to auto-trigger generation on mount."
 }
