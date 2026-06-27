@@ -791,20 +791,24 @@ export default function TasksPage() {
 
   const [aiLoading, setAiLoading] = useState(false);
 
+  // Helper: local priority sort with flash feedback
+  const fallbackSort = useCallback(() => {
+    const priorityOrder: Record<LocalTask["priority"], number> = {
+      high: 0,
+      medium: 1,
+      low: 2,
+      none: 3,
+    };
+    setTasks((prev) =>
+      [...prev].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
+    );
+    setAiPrioritized(true);
+    setTimeout(() => setAiPrioritized(false), 2000);
+  }, []);
+
   const handleAiPrioritize = async () => {
     if (!accessToken) {
-      // Fallback to local priority sort if no token
-      const priorityOrder: Record<LocalTask["priority"], number> = {
-        high: 0,
-        medium: 1,
-        low: 2,
-        none: 3,
-      };
-      setTasks((prev) =>
-        [...prev].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
-      );
-      setAiPrioritized(true);
-      setTimeout(() => setAiPrioritized(false), 2000);
+      fallbackSort();
       return;
     }
 
@@ -829,33 +833,13 @@ export default function TasksPage() {
           });
           return sorted;
         });
+        setAiPrioritized(true);
+        setTimeout(() => setAiPrioritized(false), 2000);
       } else {
-        // Fallback to local priority sort
-        const priorityOrder: Record<LocalTask["priority"], number> = {
-          high: 0,
-          medium: 1,
-          low: 2,
-          none: 3,
-        };
-        setTasks((prev) =>
-          [...prev].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
-        );
+        fallbackSort();
       }
-      setAiPrioritized(true);
-      setTimeout(() => setAiPrioritized(false), 2000);
     } catch {
-      // Fallback to local sort on error
-      const priorityOrder: Record<LocalTask["priority"], number> = {
-        high: 0,
-        medium: 1,
-        low: 2,
-        none: 3,
-      };
-      setTasks((prev) =>
-        [...prev].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
-      );
-      setAiPrioritized(true);
-      setTimeout(() => setAiPrioritized(false), 2000);
+      fallbackSort();
     } finally {
       setAiLoading(false);
     }

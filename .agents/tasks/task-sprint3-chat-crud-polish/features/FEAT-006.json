@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-006",
+  "type": "fix",
+  "description": "Address 5 issues from the sprint 3 code review: (1) PATCH no-op for uncomplete, (2) prompt injection in suggestions, (3) triplicated fallback sort, (4) non-list parse guard, (5) email utility blocks event loop.",
+  "status": "in_progress",
+  "steps": [
+    "Fix PATCH /api/tasks/{task_id} to call uncomplete_task MCP tool when completed=false",
+    "Sanitize user content in suggestions prompt to prevent prompt injection",
+    "Add isinstance(suggestions, list) guard after json.loads in suggestions endpoint",
+    "Extract fallback sort logic in handleAiPrioritize to a helper function",
+    "Wrap synchronous Gmail API calls in asyncio.to_thread in email_notifications.py"
+  ],
+  "acceptance_criteria": [
+    "PATCH endpoint calls uncomplete_task MCP tool when completed=false",
+    "Suggestions prompt delimits user content to prevent injection",
+    "Suggestions endpoint validates parsed JSON is a list before iterating",
+    "handleAiPrioritize uses a single helper for fallback sort logic",
+    "Email utility functions use asyncio.to_thread for synchronous API calls",
+    "Backend Python files compile without errors",
+    "Frontend builds without errors"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/backend && python3 -m py_compile app/main.py && python3 -m py_compile app/utils/email_notifications.py",
+    "cd /projects/sandbox/ChronAI/frontend && npm run build"
+  ],
+  "blocked_reason": null,
+  "findings": null
+}

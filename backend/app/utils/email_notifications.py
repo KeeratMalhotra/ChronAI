@@ -4,6 +4,7 @@ Provides reusable functions for sending formatted HTML emails via Gmail API,
 including task deadline reminders and daily digest summaries.
 """
 
+import asyncio
 import base64
 import logging
 from email.mime.multipart import MIMEMultipart
@@ -47,7 +48,7 @@ def _build_gmail_service(google_tokens: dict):
 
 
 def _send_email(service, to_email: str, subject: str, plain_text: str, html_body: str) -> bool:
-    """Send an email via the Gmail API.
+    """Send an email via the Gmail API (synchronous - call via asyncio.to_thread).
 
     Args:
         service: Authorized Gmail API service.
@@ -132,7 +133,10 @@ async def send_task_reminder(
 </body>
 </html>"""
 
-        _send_email(service, user_email, f"ChronAI: {task_title} - Due {deadline}", plain_text, html_body)
+        await asyncio.to_thread(
+            _send_email, service, user_email,
+            f"ChronAI: {task_title} - Due {deadline}", plain_text, html_body,
+        )
         logger.info(f"Task reminder email sent to {user_email} for '{task_title}'")
         return True
     except Exception as e:
@@ -247,7 +251,10 @@ async def send_daily_digest(
 </body>
 </html>"""
 
-        _send_email(service, user_email, "ChronAI: Your Daily Digest", plain_text, html_body)
+        await asyncio.to_thread(
+            _send_email, service, user_email,
+            "ChronAI: Your Daily Digest", plain_text, html_body,
+        )
         logger.info(f"Daily digest email sent to {user_email}")
         return True
     except Exception as e:
