@@ -1,0 +1,26 @@
+{
+  "project_type": "Next.js 15 App Router + TypeScript frontend with FastAPI backend",
+  "language": "TypeScript (React)",
+  "build_system": "pnpm with Next.js build, no brazil",
+  "test_framework": "Jest with @testing-library/react, tests in __tests__/",
+  "build_command": "cd /projects/sandbox/ChronAI/frontend && npm run build",
+  "test_command": "cd /projects/sandbox/ChronAI/frontend && npm run test",
+  "verification_instructions": "1. Run npm run build to verify no type errors. 2. Run npm run lint to check linting. 3. Run npm run test for unit tests.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "cd /projects/sandbox/ChronAI/frontend && pnpm install (already done, node_modules present)",
+  "environment_constraints": "Node.js available, pnpm available, no Docker daemon needed for frontend builds. DO NOT modify: hooks/useChatSocket.ts, lib/api.ts, lib/ws.ts, lib/voice.ts, middleware.ts, Providers.tsx, entity/, mcp-servers/, shared/",
+  "contribution_requirements": "Do not modify restricted files. Use CSS variables for theming. Follow existing Tailwind + framer-motion patterns.",
+  "key_patterns": "Components use 'use client' directive. Framer-motion for animations. @dnd-kit/core for drag-drop. CSS variables for theming (--bg, --surface, --text-primary, etc.). ROW_HEIGHT = 64px constant for time grid. Events positioned absolutely in relative day columns. AIChatPanel slides from right with framer-motion spring animation. SpotifyMiniPlayer uses framer-motion drag with useMotionValue.",
+  "relevant_files": [
+    "frontend/app/dashboard/calendar/page.tsx",
+    "frontend/app/dashboard/layout.tsx",
+    "frontend/app/dashboard/page.tsx",
+    "frontend/components/chat/AIChatPanel.tsx",
+    "frontend/components/SpotifyMiniPlayer.tsx",
+    "frontend/app/globals.css",
+    "frontend/tailwind.config.ts",
+    "frontend/lib/api-extended.ts",
+    "frontend/lib/api.ts"
+  ],
+  "directory_structure": "frontend/app/ - Next.js app router pages. frontend/components/ - Reusable components (chat/, ai/, layout/, ui/, voice/, entity/). frontend/lib/ - API helpers. frontend/hooks/ - Custom hooks. frontend/__tests__/ - Test files."
+}

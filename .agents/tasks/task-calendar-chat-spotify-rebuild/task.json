@@ -1,0 +1,7 @@
+{
+  "task_id": "task-calendar-chat-spotify-rebuild",
+  "task_description": "Rebuild calendar event positioning for perfect multi-hour spanning, update time text on drag-drop, smart fetch scoping, fix dashboard blank page, transform AI Chat into detachable sliding panel, and make Spotify button vertical-only draggable.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

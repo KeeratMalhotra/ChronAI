@@ -6,6 +6,7 @@ import { Music, X } from "lucide-react";
 
 const STORAGE_KEY = "chronai-spotify-player";
 const CONNECTED_KEY = "chronai-spotify-connected";
+const BUTTON_Y_STORAGE_KEY = "chronai-spotify-button-y";
 
 interface PlayerState {
   visible: boolean;
@@ -15,23 +16,24 @@ interface PlayerState {
 
 const DEFAULT_STATE: PlayerState = {
   visible: true,
-  snapped: false,
+  snapped: true,
   position: { x: 0, y: 0 },
 };
 
 const CARD_WIDTH = 320;
 const CARD_HEIGHT = 200;
-const SNAP_THRESHOLD = 40;
 const SNAPPED_BUTTON_SIZE = 40;
 
 export default function SpotifyMiniPlayer() {
   const [connected, setConnected] = useState(false);
   const [playerState, setPlayerState] = useState<PlayerState>(DEFAULT_STATE);
   const [mounted, setMounted] = useState(false);
+  const [buttonY, setButtonY] = useState<number | null>(null);
   const constraintsRef = useRef<HTMLDivElement>(null);
   const controls = useAnimationControls();
   const motionX = useMotionValue(0);
   const motionY = useMotionValue(0);
+  const buttonMotionY = useMotionValue(0);
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -47,6 +49,16 @@ export default function SpotifyMiniPlayer() {
         // Use default state
       }
     }
+
+    // Load button Y position
+    const storedY = localStorage.getItem(BUTTON_Y_STORAGE_KEY);
+    if (storedY) {
+      const parsedY = parseFloat(storedY);
+      if (!isNaN(parsedY)) {
+        setButtonY(parsedY);
+      }
+    }
+
     setMounted(true);
   }, []);
 
@@ -85,32 +97,21 @@ export default function SpotifyMiniPlayer() {
 
   if (!mounted || !connected || !playerState.visible) return null;
 
-  const handleDragEnd = () => {
+  const handleCardDragEnd = () => {
     const currentX = motionX.get();
-    const viewportWidth = window.innerWidth;
-
-    // Check if near right edge
-    if (currentX + CARD_WIDTH >= viewportWidth - SNAP_THRESHOLD) {
-      const currentY = motionY.get();
-      saveState({
-        ...playerState,
-        snapped: true,
-        position: { x: currentX, y: currentY },
-      });
-    } else {
-      const currentY = motionY.get();
-      saveState({
-        ...playerState,
-        snapped: false,
-        position: { x: currentX, y: currentY },
-      });
-    }
+    const currentY = motionY.get();
+    saveState({
+      ...playerState,
+      snapped: false,
+      position: { x: currentX, y: currentY },
+    });
   };
 
   const handleExpand = () => {
     const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1200;
     const expandX = viewportWidth - CARD_WIDTH - 24;
-    const expandY = playerState.position.y || (typeof window !== "undefined" ? window.innerHeight - CARD_HEIGHT - 100 : 500);
+    const currentButtonY = buttonY ?? (typeof window !== "undefined" ? window.innerHeight / 2 : 300);
+    const expandY = Math.max(20, currentButtonY - CARD_HEIGHT / 2);
     saveState({
       ...playerState,
       snapped: false,
@@ -126,27 +127,51 @@ export default function SpotifyMiniPlayer() {
     });
   };
 
-  // Snapped (collapsed) state - small button on right edge
+  const handleButtonDragEnd = () => {
+    const currentY = buttonMotionY.get();
+    const baseY = buttonY ?? (typeof window !== "undefined" ? window.innerHeight / 2 - SNAPPED_BUTTON_SIZE / 2 : 300);
+    const newY = baseY + currentY;
+    // Clamp to viewport
+    const maxY = (typeof window !== "undefined" ? window.innerHeight : 800) - SNAPPED_BUTTON_SIZE;
+    const clampedY = Math.max(0, Math.min(newY, maxY));
+    setButtonY(clampedY);
+    localStorage.setItem(BUTTON_Y_STORAGE_KEY, String(clampedY));
+    // Reset motion value since we update the top position directly
+    buttonMotionY.set(0);
+  };
+
+  // Snapped (collapsed) state - small button on right edge, draggable vertically only
   if (playerState.snapped) {
+    const topPosition = buttonY ?? (typeof window !== "undefined" ? window.innerHeight / 2 - SNAPPED_BUTTON_SIZE / 2 : 300);
+    const maxDragUp = -topPosition;
+    const maxDragDown = (typeof window !== "undefined" ? window.innerHeight : 800) - SNAPPED_BUTTON_SIZE - topPosition;
+
     return (
-      <motion.button
+      <motion.div
+        drag="y"
+        dragMomentum={false}
+        dragConstraints={{ top: maxDragUp, bottom: maxDragDown }}
+        onDragEnd={handleButtonDragEnd}
+        style={{
+          y: buttonMotionY,
+          width: SNAPPED_BUTTON_SIZE,
+          height: SNAPPED_BUTTON_SIZE,
+          right: 0,
+          top: topPosition,
+        }}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.8 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
         onClick={handleExpand}
-        className="fixed z-[60] flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
-        style={{
-          width: SNAPPED_BUTTON_SIZE,
-          height: SNAPPED_BUTTON_SIZE,
-          right: 0,
-          top: playerState.position.y || "50%",
-          transform: "translateX(0)",
-        }}
+        className="fixed z-[60] flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] transition-colors cursor-grab active:cursor-grabbing"
+        role="button"
+        tabIndex={0}
         aria-label="Expand Spotify player"
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleExpand(); }}
       >
         <Music size={18} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
-      </motion.button>
+      </motion.div>
     );
   }
 
@@ -160,7 +185,7 @@ export default function SpotifyMiniPlayer() {
         drag
         dragMomentum={false}
         dragConstraints={constraintsRef}
-        onDragEnd={handleDragEnd}
+        onDragEnd={handleCardDragEnd}
         animate={controls}
         style={{ x: motionX, y: motionY }}
         className="fixed top-0 left-0 z-[60] cursor-grab active:cursor-grabbing"

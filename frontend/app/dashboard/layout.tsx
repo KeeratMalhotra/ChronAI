@@ -36,6 +36,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         : undefined;
 
   const [chatOpen, setChatOpen] = useState(false);
+  const [detached, setDetached] = useState(false);
+
+  const handleDetach = () => {
+    setDetached(true);
+  };
+
+  const handleAttach = () => {
+    setDetached(false);
+  };
 
   return (
     <AppShell connected={connected} userImage={userImage}>
@@ -86,6 +95,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           onClose={() => setChatOpen(false)}
           accessToken={accessToken}
           userName={userName}
+          detached={detached}
+          onDetach={handleDetach}
+          onAttach={handleAttach}
         />
       </AIContextProvider>
       <SpotifyMiniPlayer />
