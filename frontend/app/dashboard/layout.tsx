@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import SpotifyMiniPlayer from "@/components/SpotifyMiniPlayer";
 import {
@@ -23,6 +24,7 @@ function NotificationSocketListener() {
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const { connection } = useConnectionState();
+  const pathname = usePathname();
   const userImage = session?.user?.image ?? null;
   const accessToken =
     ((session as Record<string, unknown> | null)?.accessToken as string) || "";
@@ -50,7 +52,17 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     <AppShell connected={connected} userImage={userImage}>
       <AIContextProvider>
         <NotificationSocketListener />
-        {children}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
         <AIToast />
 
         {/* Persistent AI Chat FAB - available on all dashboard pages */}

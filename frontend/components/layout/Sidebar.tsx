@@ -10,6 +10,7 @@ import {
   Calendar,
   CalendarClock,
   Flame,
+  BarChart3,
   Settings,
   ChevronsLeft,
   ChevronsRight,
@@ -34,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Calendar", icon: Calendar, path: "/dashboard/calendar" },
   { label: "Planner", icon: CalendarClock, path: "/dashboard/planner" },
   { label: "Habits", icon: Flame, path: "/dashboard/habits" },
+  { label: "Analytics", icon: BarChart3, path: "/dashboard/analytics" },
   { label: "Settings", icon: Settings, path: "/dashboard/settings" },
 ];
 
