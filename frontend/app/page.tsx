@@ -574,7 +574,7 @@ function CalmReassurance() {
     <section className="relative z-10 mx-auto w-full max-w-3xl px-6 py-24 text-center">
       <Reveal>
         <SectionLabel>{"// breathe out"}</SectionLabel>
-        <h2 className="font-pixel mx-auto max-w-2xl text-4xl font-bold text-[var(--text-primary)] sm:text-5xl">
+        <h2 className="font-pixel mx-auto max-w-2xl text-4xl font-bold text-[var(--text-primary)] dark:text-[#ece9e4] sm:text-5xl">
           Let the house take it from here
         </h2>
         <div className="mx-auto mt-9 flex max-w-xl flex-col gap-5">
@@ -582,7 +582,7 @@ function CalmReassurance() {
             <Reveal key={i} delay={i * 0.08}>
               <div className="flex items-start gap-3 text-left">
                 <span className="mt-2 h-3 w-3 flex-shrink-0 bg-warm-400" />
-                <p className="text-xl leading-[1.7] text-[var(--text-secondary)]">{line}</p>
+                <p className="text-xl leading-[1.7] text-[var(--text-secondary)] dark:text-[#a8a39c]">{line}</p>
               </div>
             </Reveal>
           ))}
@@ -609,7 +609,7 @@ function IntegrationsStrip() {
 
         <motion.h2
           variants={reduce ? undefined : fadeUp}
-          className="font-pixel mx-auto max-w-3xl text-4xl font-bold text-[var(--text-primary)] sm:text-5xl"
+          className="font-pixel mx-auto max-w-3xl text-4xl font-bold text-[var(--text-primary)] dark:text-[#ece9e4] sm:text-5xl"
         >
           Your Gmail, calendar, slides &amp; tasks —{" "}
           <span className="gradient-text-pixel">handled together</span>
@@ -617,7 +617,7 @@ function IntegrationsStrip() {
 
         <motion.p
           variants={reduce ? undefined : fadeUp}
-          className="mx-auto mt-6 max-w-xl text-xl leading-[1.7] text-[var(--text-secondary)]"
+          className="mx-auto mt-6 max-w-xl text-xl leading-[1.7] text-[var(--text-secondary)] dark:text-[#a8a39c]"
         >
           Connect the apps you already use and let Haven run them as one calm,
           coordinated home — no tab-hopping, no juggling, all at once.
@@ -634,7 +634,7 @@ function IntegrationsStrip() {
               whileInView={reduce ? undefined : { opacity: 1, scale: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, ease: EASE_CALM, delay: 0.1 + i * 0.08 }}
-              className="pixel-corners flex items-center gap-2.5 border-[3px] border-warm-400/40 bg-warm-400/8 px-5 py-3 text-lg font-medium text-[var(--text-primary)] shadow-pixel-sm transition-transform hover:-translate-y-0.5 hover:shadow-pixel"
+              className="pixel-corners flex items-center gap-2.5 border-[3px] border-warm-400/40 bg-warm-400/8 px-5 py-3 text-lg font-medium text-[var(--text-primary)] dark:text-[#ece9e4] shadow-pixel-sm transition-transform hover:-translate-y-0.5 hover:shadow-pixel"
             >
               <span className="h-3 w-3 bg-warm-400 animate-pixel-twinkle" style={{ animationDelay: `${i * 0.4}s` }} />
               {name}
@@ -652,7 +652,7 @@ function Pillars() {
     <section id="features" className="relative z-10 mx-auto w-full max-w-5xl scroll-mt-24 px-6 py-32">
       <Reveal className="mb-12 text-center">
         <SectionLabel>{"// why haven"}</SectionLabel>
-        <h2 className="font-pixel mx-auto max-w-2xl text-4xl font-semibold text-[var(--text-primary)] sm:text-5xl">
+        <h2 className="font-pixel mx-auto max-w-2xl text-4xl font-semibold text-[var(--text-primary)] dark:text-[#ece9e4] sm:text-5xl">
           A quieter way to stay on top of everything
         </h2>
       </Reveal>
@@ -676,8 +676,8 @@ function Pillars() {
               <div className={`pixelated mb-5 grid h-12 w-12 place-items-center border-[3px] ${borders[i]} ${tints[i]}`}>
                 <PixelIcon kind={p.icon} />
               </div>
-              <h3 className="font-pixel mb-2.5 text-2xl font-semibold text-[var(--text-primary)]">{p.title}</h3>
-              <p className="text-base leading-[1.75] text-[var(--text-secondary)]">{p.body}</p>
+              <h3 className="font-pixel mb-2.5 text-2xl font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]">{p.title}</h3>
+              <p className="text-base leading-[1.75] text-[var(--text-secondary)] dark:text-[#a8a39c]">{p.body}</p>
             </motion.div>
           );
         })}
@@ -692,7 +692,7 @@ function HowItWorks() {
     <section id="how" className="relative z-10 mx-auto w-full max-w-5xl scroll-mt-24 px-6 py-32">
       <Reveal className="mb-12 text-center">
         <SectionLabel>{"// moving in"}</SectionLabel>
-        <h2 className="font-pixel mx-auto max-w-2xl text-4xl font-semibold text-[var(--text-primary)] sm:text-5xl">
+        <h2 className="font-pixel mx-auto max-w-2xl text-4xl font-semibold text-[var(--text-primary)] dark:text-[#ece9e4] sm:text-5xl">
           From chaos to calm in three steps
         </h2>
       </Reveal>
@@ -716,8 +716,8 @@ function HowItWorks() {
             <div className="pixelated mb-5 grid h-12 w-12 place-items-center border-[3px] border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <PixelIcon kind={s.icon} />
             </div>
-            <h3 className="font-pixel mb-2.5 text-2xl font-semibold text-[var(--text-primary)]">{s.title}</h3>
-            <p className="text-base leading-[1.75] text-[var(--text-secondary)]">{s.body}</p>
+            <h3 className="font-pixel mb-2.5 text-2xl font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]">{s.title}</h3>
+            <p className="text-base leading-[1.75] text-[var(--text-secondary)] dark:text-[#a8a39c]">{s.body}</p>
           </motion.div>
         ))}
       </motion.div>
@@ -736,8 +736,8 @@ function FeatureDepth() {
                 <p className="mb-3 font-terminal text-xl uppercase tracking-[0.2em] text-warm-400">
                   [ {f.eyebrow} ]
                 </p>
-                <h3 className="font-pixel mb-4 text-3xl font-semibold text-[var(--text-primary)] sm:text-4xl">{f.title}</h3>
-                <p className="mx-auto max-w-md text-base leading-[1.75] text-[var(--text-secondary)] md:mx-0">{f.body}</p>
+                <h3 className="font-pixel mb-4 text-3xl font-semibold text-[var(--text-primary)] dark:text-[#ece9e4] sm:text-4xl">{f.title}</h3>
+                <p className="mx-auto max-w-md text-base leading-[1.75] text-[var(--text-secondary)] dark:text-[#a8a39c] md:mx-0">{f.body}</p>
               </div>
               <div className="flex-1">
                 <FeatureArt art={f.art} />
@@ -758,10 +758,10 @@ function CozyBand() {
           <div className="mb-6 flex justify-center">
             <MiniCampfire size={56} />
           </div>
-          <h2 className="font-pixel mx-auto max-w-2xl text-4xl font-bold text-[var(--text-primary)] sm:text-5xl">
+          <h2 className="font-pixel mx-auto max-w-2xl text-4xl font-bold text-[var(--text-primary)] dark:text-[#ece9e4] sm:text-5xl">
             The home that has your back
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-lg leading-[1.8] text-[var(--text-secondary)]">
+          <p className="mx-auto mt-5 max-w-xl text-lg leading-[1.8] text-[var(--text-secondary)] dark:text-[#a8a39c]">
             Haven isn&apos;t another dashboard to manage. It&apos;s a warm,
             lamp-lit place that notices everything — every task, every
             reschedule, every late night — and quietly keeps things in order, so
@@ -779,7 +779,7 @@ function Faq() {
     <section id="faq" className="relative z-10 mx-auto w-full max-w-3xl scroll-mt-24 px-6 py-32">
       <Reveal className="mb-10 text-center">
         <SectionLabel>{"// before you move in"}</SectionLabel>
-        <h2 className="font-pixel text-4xl font-semibold text-[var(--text-primary)] sm:text-5xl">
+        <h2 className="font-pixel text-4xl font-semibold text-[var(--text-primary)] dark:text-[#ece9e4] sm:text-5xl">
           Questions, answered
         </h2>
       </Reveal>
@@ -795,13 +795,13 @@ function Faq() {
                   className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
                   aria-expanded={isOpen}
                 >
-                  <span className="font-pixel text-xl font-semibold text-[var(--text-primary)]">{f.q}</span>
+                  <span className="font-pixel text-xl font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]">{f.q}</span>
                   <span className={`pixelated grid h-6 w-6 flex-shrink-0 place-items-center border-2 border-warm-400/60 font-pixel text-warm-400 transition-transform duration-150 ${isOpen ? "rotate-45" : ""}`}>
                     +
                   </span>
                 </button>
                 {isOpen && (
-                  <p className="border-t-2 border-[var(--border)] px-5 py-4 text-base leading-[1.75] text-[var(--text-secondary)]">
+                  <p className="border-t-2 border-[var(--border)] px-5 py-4 text-base leading-[1.75] text-[var(--text-secondary)] dark:text-[#a8a39c]">
                     {f.a}
                   </p>
                 )}
@@ -839,7 +839,7 @@ function Nav() {
       >
         <a href="#top" className="flex items-center gap-2.5">
           <PixelLogo size={26} />
-          <span className="font-pixel text-lg font-semibold tracking-tight text-[var(--text-primary)]">
+          <span className="font-pixel text-lg font-semibold tracking-tight text-[var(--text-primary)] dark:text-[#ece9e4]">
             Haven
           </span>
         </a>
@@ -853,7 +853,7 @@ function Nav() {
             <a
               key={l.href}
               href={l.href}
-              className="font-terminal text-xl text-[var(--text-secondary)] transition-colors hover:text-warm-400"
+              className="font-terminal text-xl text-[var(--text-secondary)] dark:text-[#a8a39c] transition-colors hover:text-warm-400"
             >
               {l.label}
             </a>
@@ -870,7 +870,7 @@ function Nav() {
           </button>
           <button
             onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-            className="hidden font-terminal text-xl text-[var(--text-secondary)] transition-colors hover:text-warm-400 sm:block"
+            className="hidden font-terminal text-xl text-[var(--text-secondary)] dark:text-[#a8a39c] transition-colors hover:text-warm-400 sm:block"
           >
             sign in &gt;
           </button>
@@ -1056,7 +1056,7 @@ export default function LandingPage() {
 
             <motion.h1
               variants={reduce ? undefined : fadeUp}
-              className="font-pixel text-balance text-5xl font-bold leading-[1.1] text-[var(--text-primary)] sm:text-6xl md:text-7xl"
+              className="font-pixel text-balance text-5xl font-bold leading-[1.1] text-[var(--text-primary)] dark:text-[#ece9e4] sm:text-6xl md:text-7xl"
             >
               Come home to a{" "}
               <span className="gradient-text-pixel">calmer way to work</span>
@@ -1064,7 +1064,7 @@ export default function LandingPage() {
 
             <motion.p
               variants={reduce ? undefined : fadeUp}
-              className="mt-6 max-w-xl text-balance text-xl leading-[1.7] text-[var(--text-secondary)]"
+              className="mt-6 max-w-xl text-balance text-xl leading-[1.7] text-[var(--text-secondary)] dark:text-[#a8a39c]"
             >
               Haven is your cozy AI home. It plans your day, guards your time,
               and quietly handles every task and deadline — so you can put the
@@ -1076,7 +1076,7 @@ export default function LandingPage() {
               className="mt-9 flex flex-col items-center gap-4 lg:items-start"
             >
               <GetStartedButton />
-              <p className="font-terminal text-xl tracking-wide text-[var(--text-tertiary)]">
+              <p className="font-terminal text-xl tracking-wide text-[var(--text-tertiary)] dark:text-[#847e76]">
                 calm in the chaos &middot; no credit card needed
               </p>
             </motion.div>
@@ -1122,9 +1122,9 @@ export default function LandingPage() {
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2.5">
               <PixelLogo size={24} />
-              <span className="font-pixel text-base font-semibold tracking-tight text-[var(--text-primary)]">Haven</span>
+              <span className="font-pixel text-base font-semibold tracking-tight text-[var(--text-primary)] dark:text-[#ece9e4]">Haven</span>
             </div>
-            <p className="mt-4 max-w-xs text-sm leading-[1.7] text-[var(--text-secondary)]">
+            <p className="mt-4 max-w-xs text-sm leading-[1.7] text-[var(--text-secondary)] dark:text-[#a8a39c]">
               The cozy AI home for your tasks, time, and focus. Come home to calm.
             </p>
           </div>
@@ -1141,7 +1141,7 @@ export default function LandingPage() {
                   <li key={link}>
                     <button
                       onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-                      className="text-sm text-[var(--text-secondary)] transition-colors hover:text-warm-400"
+                      className="text-sm text-[var(--text-secondary)] dark:text-[#a8a39c] transition-colors hover:text-warm-400"
                     >
                       {link}
                     </button>
@@ -1153,10 +1153,10 @@ export default function LandingPage() {
         </div>
 
         <div className="mx-auto mt-12 flex w-full max-w-5xl flex-col items-center justify-between gap-3 border-t-2 border-[var(--border)] px-6 pt-6 sm:flex-row">
-          <p className="text-xs text-[var(--text-tertiary)]">
+          <p className="text-xs text-[var(--text-tertiary)] dark:text-[#847e76]">
             Built with care. Your day, handled — your data stays yours.
           </p>
-          <p className="font-terminal text-base text-[var(--text-tertiary)] opacity-70">
+          <p className="font-terminal text-base text-[var(--text-tertiary)] dark:text-[#847e76] opacity-70">
             haven {new Date().getFullYear()} — the porch light is on
           </p>
         </div>
