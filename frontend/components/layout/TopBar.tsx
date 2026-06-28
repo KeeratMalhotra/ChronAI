@@ -60,7 +60,7 @@ export default function TopBar({
             onClick={onMenuClick}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.92 }}
-            className="rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] md:hidden"
+            className="rounded-lg p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] md:hidden"
             aria-label="Open menu"
           >
             <Menu size={20} strokeWidth={1.5} />
@@ -108,6 +108,7 @@ export default function TopBar({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           {userImage ? (
             <Image

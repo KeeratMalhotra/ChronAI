@@ -368,7 +368,7 @@ export default function HabitsPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success-500/10">
               <Flame size={20} strokeWidth={1.5} className="text-success-500" />
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+            <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
               Habits
             </h1>
           </div>

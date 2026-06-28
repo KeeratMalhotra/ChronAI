@@ -337,9 +337,22 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<CalendarView>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [isMobile, setIsMobile] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [navDirection, setNavDirection] = useState(0);
+
+  // Detect mobile viewport for responsive view override
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
+  // Effective view: override week to day on mobile
+  const effectiveView: CalendarView = (view === "week" && isMobile) ? "day" : view;
 
   // Create event form
   const [newSummary, setNewSummary] = useState("");
@@ -514,7 +527,7 @@ export default function CalendarPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const days = view === "day" ? 1 : view === "week" ? 7 : 30;
+      const days = effectiveView === "day" ? 1 : effectiveView === "week" ? 7 : 30;
       try {
         const fetched = await fetchCalendarEvents(accessToken, days);
         setEvents(fetched);
@@ -524,14 +537,14 @@ export default function CalendarPage() {
       setLoading(false);
     }
     load();
-  }, [accessToken, view, currentDate]);
+  }, [accessToken, effectiveView, currentDate]);
 
   // Scroll to current time (or 8am if before 8am) when day/week view mounts
   useEffect(() => {
-    if (view !== "day" && view !== "week") return;
+    if (effectiveView !== "day" && effectiveView !== "week") return;
     // Small delay to allow DOM to render
     const timer = setTimeout(() => {
-      const container = view === "day" ? dayScrollRef.current : weekScrollRef.current;
+      const container = effectiveView === "day" ? dayScrollRef.current : weekScrollRef.current;
       if (!container) return;
       const now = new Date();
       const targetHour = now.getHours() < 8 ? 8 : now.getHours();
@@ -540,7 +553,7 @@ export default function CalendarPage() {
       container.scrollTo({ top: scrollTarget, behavior: "smooth" });
     }, 100);
     return () => clearTimeout(timer);
-  }, [view, currentDate]);
+  }, [effectiveView, currentDate]);
 
   // Navigation
   const navigatePrev = () => {
@@ -707,14 +720,14 @@ export default function CalendarPage() {
               <CalendarIcon size={20} strokeWidth={1.5} className="text-accent-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-                {view === "month" && format(currentDate, "MMMM yyyy")}
-                {view === "week" &&
+              <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+                {effectiveView === "month" && format(currentDate, "MMMM yyyy")}
+                {effectiveView === "week" &&
                   `${format(startOfWeek(currentDate), "MMM d")} - ${format(
                     endOfWeek(currentDate),
                     "MMM d, yyyy"
                   )}`}
-                {view === "day" && format(currentDate, "EEEE, MMMM d, yyyy")}
+                {effectiveView === "day" && format(currentDate, "EEEE, MMMM d, yyyy")}
               </h1>
             </div>
           </div>
@@ -791,7 +804,7 @@ export default function CalendarPage() {
       ) : (
         <AnimatePresence mode="wait" initial={false}>
           {/* Month View */}
-          {view === "month" && (
+          {effectiveView === "month" && (
             <motion.div
               key={`month-${format(currentDate, "yyyy-MM")}`}
               initial={{ opacity: 0, x: navDirection * 30 }}
@@ -859,7 +872,7 @@ export default function CalendarPage() {
           )}
 
           {/* Week View */}
-          {view === "week" && (
+          {effectiveView === "week" && (
             <motion.div
               key={`week-${format(currentDate, "yyyy-ww")}`}
               initial={{ opacity: 0, x: navDirection * 30 }}
@@ -980,7 +993,7 @@ export default function CalendarPage() {
           )}
 
           {/* Day View */}
-          {view === "day" && (
+          {effectiveView === "day" && (
             <motion.div
               key={`day-${format(currentDate, "yyyy-MM-dd")}`}
               initial={{ opacity: 0, x: navDirection * 30 }}

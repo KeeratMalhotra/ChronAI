@@ -296,7 +296,7 @@ function KanbanColumn({
   onSelect?: (taskId: string) => void;
 }) {
   return (
-    <div className="flex-1 min-w-[280px]">
+    <div className="flex-1 md:min-w-[280px]">
       <div className="flex items-center gap-2 mb-3 px-1">
         <div className={`h-2.5 w-2.5 rounded-full ${color}`} />
         <h3 className="text-sm font-medium text-[var(--text-secondary)]">
@@ -562,7 +562,7 @@ function ListRow({
       </button>
       <button
         onClick={onToggle}
-        className={`flex-shrink-0 h-4.5 w-4.5 rounded border-2 transition-colors duration-150 flex items-center justify-center ${
+        className={`flex-shrink-0 h-4.5 w-4.5 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 rounded border-2 transition-colors duration-150 flex items-center justify-center ${
           task.status === "done"
             ? "bg-accent-500 border-accent-500"
             : "border-[var(--border)] hover:border-accent-400"
@@ -650,7 +650,7 @@ function ListRow({
           e.stopPropagation();
           onDelete();
         }}
-        className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--text-tertiary)] hover:text-danger-500 flex-shrink-0"
+        className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--text-tertiary)] hover:text-danger-500 flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center md:min-h-0 md:min-w-0"
       >
         <Trash2 size={14} strokeWidth={1.5} />
       </button>
@@ -1470,7 +1470,7 @@ export default function TasksPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning-500/10">
             <CheckSquare size={20} strokeWidth={1.5} className="text-warning-500" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
             Tasks
           </h1>
         </div>
@@ -1614,7 +1614,7 @@ export default function TasksPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
                 transition={{ duration: 0.2 }}
-                className="flex gap-4 overflow-x-auto pb-4 flex-1"
+                className="flex flex-col md:flex-row gap-4 overflow-x-auto pb-4 flex-1"
               >
                 <KanbanColumn
                   title="To Do"

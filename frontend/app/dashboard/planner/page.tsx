@@ -454,7 +454,7 @@ export default function PlannerPage() {
             <CalendarClock size={20} strokeWidth={1.5} className="text-accent-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+            <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
               Planner
             </h1>
             <p className="text-xs text-[var(--text-tertiary)]">

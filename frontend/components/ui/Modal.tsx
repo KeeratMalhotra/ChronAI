@@ -53,7 +53,7 @@ export function Modal({ open, onClose, children, className = "" }: ModalProps) {
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+        <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center">
           {/* Backdrop */}
           <motion.div
             variants={backdropVariants}
@@ -72,9 +72,9 @@ export function Modal({ open, onClose, children, className = "" }: ModalProps) {
             exit="hidden"
             transition={springTransition}
             className={`
-              relative z-10 w-full max-w-lg mx-4
+              relative z-10 w-full h-full md:h-auto md:max-w-lg mx-0 md:mx-4
               bg-[var(--surface-elevated)] border border-[var(--border)]
-              rounded-2xl shadow-2xl overflow-hidden
+              rounded-none md:rounded-2xl shadow-2xl overflow-y-auto
               ${className}
             `}
           >

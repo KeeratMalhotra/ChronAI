@@ -429,7 +429,7 @@ function SettingsContent() {
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-500/10">
           <Settings size={20} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+        <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
           Settings
         </h1>
       </div>
