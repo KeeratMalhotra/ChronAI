@@ -144,7 +144,14 @@ export default function DashboardPage() {
   const [focusActive, setFocusActive] = useState(false);
   const [focusTask, setFocusTask] = useState<string | undefined>(undefined);
 
-
+  // Listen for the "chronai-start-focus" custom event dispatched by the TopBar quick actions
+  useEffect(() => {
+    const handleStartFocus = () => {
+      setFocusActive(true);
+    };
+    window.addEventListener("chronai-start-focus", handleStartFocus);
+    return () => window.removeEventListener("chronai-start-focus", handleStartFocus);
+  }, []);
 
   // Auto-Pilot panel
   const [autopilotOpen, setAutopilotOpen] = useState(false);

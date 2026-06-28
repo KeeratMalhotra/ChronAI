@@ -7,12 +7,37 @@ import { useAI } from "./AIContextProvider";
 import type { AISuggestion } from "./AIContextProvider";
 
 /**
+ * Module-level AudioContext reused across all toast notifications.
+ * A single long-lived context avoids hitting browser limits (Chrome allows ~6 simultaneous contexts).
+ */
+let sharedAudioCtx: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
+  try {
+    if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+      sharedAudioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    }
+    return sharedAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Play a subtle notification pop sound using Web Audio API.
  * 200ms sine wave at 800Hz with quick exponential fade-out.
+ * Reuses a single AudioContext to avoid browser context limits.
  */
 function playNotificationSound() {
   try {
-    const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const audioCtx = getAudioContext();
+    if (!audioCtx) return;
+
+    // Resume context if suspended (e.g., before user gesture)
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+
     const oscillator = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
 
@@ -28,9 +53,10 @@ function playNotificationSound() {
     oscillator.start(audioCtx.currentTime);
     oscillator.stop(audioCtx.currentTime + 0.2);
 
-    // Clean up after sound finishes
+    // Disconnect nodes after sound finishes to free resources
     oscillator.onended = () => {
-      audioCtx.close();
+      oscillator.disconnect();
+      gainNode.disconnect();
     };
   } catch {
     // Silently fail if audio context is not available

@@ -237,6 +237,9 @@ export default function SpotifyMiniPlayer() {
 
   const handlePlayPauseToggle = () => {
     if (isDraggingRef.current) return;
+    // Visual indicator only: the Spotify embed iframe does not expose programmatic
+    // playback control from the host page. The actual play/pause state is managed
+    // within the iframe's own UI. This toggle updates the icon as a convenience hint.
     setIsPlaying((prev) => !prev);
   };
 
@@ -362,7 +365,9 @@ export default function SpotifyMiniPlayer() {
               </button>
             </div>
 
-            {/* Volume slider */}
+            {/* Volume slider - visual indicator only. The Spotify embed API does not
+                expose volume control from the host page. Users control volume via the
+                iframe's built-in player controls. */}
             <div className="flex items-center gap-2 px-3 pb-2">
               <Volume2 size={14} strokeWidth={1.5} className="text-[var(--text-tertiary)] flex-shrink-0" />
               <input

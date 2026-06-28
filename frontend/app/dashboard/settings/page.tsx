@@ -415,14 +415,31 @@ function SettingsContent() {
   };
 
   // --- Profile picture handlers ---
+  const [profilePictureError, setProfilePictureError] = useState<string | null>(null);
+
   const handleProfilePictureSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setProfilePictureError(null);
+
+    // Size guard: max 2MB to avoid exceeding localStorage quota
+    const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+    if (file.size > MAX_SIZE_BYTES) {
+      setProfilePictureError("Image must be under 2MB. Please choose a smaller file.");
+      e.target.value = "";
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
       setCustomProfilePicture(base64);
-      localStorage.setItem("chronai-profile-picture", base64);
+      try {
+        localStorage.setItem("chronai-profile-picture", base64);
+      } catch {
+        // Handle QuotaExceededError gracefully
+        setProfilePictureError("Failed to save image. File may be too large for local storage.");
+      }
     };
     reader.readAsDataURL(file);
     // Reset input value so the same file can be selected again
@@ -571,6 +588,9 @@ function SettingsContent() {
                 >
                   Remove photo
                 </button>
+              )}
+              {profilePictureError && (
+                <p className="mt-1 text-xs text-red-500">{profilePictureError}</p>
               )}
             </div>
           </div>

@@ -61,7 +61,91 @@ export default function AIChatPanel({
   }, []);
 
   // Detached floating window mode
+  // On small screens (< 640px), fall back to attached mode to prevent viewport clipping
   if (detached) {
+    const isSmallScreen = typeof window !== "undefined" && window.innerWidth < 640;
+
+    // If the viewport is too small for floating mode, render as attached panel instead
+    if (isSmallScreen) {
+      return (
+        <AnimatePresence>
+          {open && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 z-[80] bg-black/30 backdrop-blur-[2px]"
+                onClick={onClose}
+              />
+
+              {/* Full-screen panel on mobile when detached */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="fixed inset-0 z-[81] flex flex-col bg-[var(--bg)]"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={16} className="text-accent-500" />
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">
+                      AI Assistant
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={onAttach}
+                      className="rounded-md p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+                      title="Attach to side panel"
+                    >
+                      <Minimize2 size={14} />
+                    </button>
+                    <button
+                      onClick={onClose}
+                      className="rounded-md p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Chat body */}
+                <div className="flex-1 overflow-hidden">
+                  <ChatExperience
+                    accessToken={accessToken}
+                    userName={userName}
+                    onConnectionChange={setConnection}
+                    onSendReady={handleSendReady}
+                  />
+                </div>
+
+                {/* Suggestion chips */}
+                <div className="border-t border-[var(--border-subtle)] px-4 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    {SUGGESTIONS.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="inline-flex items-center rounded-full bg-[var(--surface-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] cursor-pointer transition-colors hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      );
+    }
+
     return (
       <AnimatePresence>
         {open && (
@@ -82,10 +166,10 @@ export default function AIChatPanel({
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               className="fixed z-[90] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--bg)] shadow-2xl"
               style={{
-                width: 400,
-                height: 550,
-                top: "calc(50% - 275px)",
-                left: "calc(50% - 200px)",
+                width: Math.min(400, typeof window !== "undefined" ? window.innerWidth - 32 : 400),
+                height: Math.min(550, typeof window !== "undefined" ? window.innerHeight - 32 : 550),
+                top: `max(16px, calc(50% - ${Math.min(275, (typeof window !== "undefined" ? window.innerHeight - 32 : 550) / 2)}px))`,
+                left: `max(16px, calc(50% - ${Math.min(200, (typeof window !== "undefined" ? window.innerWidth - 32 : 400) / 2)}px))`,
               }}
             >
             {/* Drag handle / Title bar */}
