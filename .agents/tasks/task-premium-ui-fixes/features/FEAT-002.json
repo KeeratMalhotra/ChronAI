@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "AI Chat Button Redesign + Voice Mode Inside Chat Panel. (1) Replace the gradient FAB circle in dashboard/layout.tsx with a subtle matte button. Add a small chat icon in the TopBar right section (before the avatar) -- minimal, no gradients, no glow. Remove the fixed bottom-24 right-6 FAB entirely. (2) Modify VoiceMode to render INLINE inside the chat panel instead of a full-screen overlay. When mic is clicked in ChatExperience, replace the message area with the voice UI (mic button + listening indicator). When done, switch back to chat messages.",
+  "status": "pending",
+  "steps": [
+    "In frontend/app/dashboard/layout.tsx: Remove the entire fixed bottom-24 right-6 FAB button div (the gradient circle with MessageCircle/X icons). Instead, pass chatOpen and setChatOpen as props or via context so TopBar can trigger it.",
+    "In frontend/components/layout/AppShell.tsx: Accept new props onChatToggle and chatOpen, pass them to TopBar.",
+    "In frontend/components/layout/TopBar.tsx: Add a new matte chat toggle button in the right section (between the search button and connection indicator). Use MessageCircle icon from lucide-react, 16px. Style: rounded-lg p-2 bg-[var(--surface)] border border-[var(--border)] hover:bg-[var(--surface-hover)]. When chatOpen, use accent-500 text color to indicate active state. No gradients, no glow.",
+    "In frontend/components/voice/VoiceMode.tsx: Remove the fixed inset-0 z-50 full-screen overlay wrapper. Instead, make it render as an inline component (relative positioning, full width/height of its parent). Remove the close button (parent will handle showing/hiding). Keep the mic button, listening indicator, and phase logic intact. Accept the same props but render without the AnimatePresence fixed overlay.",
+    "In frontend/components/chat/ChatExperience.tsx: Instead of rendering VoiceMode as a fixed overlay at the bottom, render it INLINE where the message area would be. When voiceActive is true, hide MessageList and show VoiceMode in its place (same flex-1 container). When voiceActive is false, show messages normally."
+  ],
+  "acceptance_criteria": [
+    "No gradient FAB circle button visible at bottom-right of dashboard",
+    "TopBar shows a matte chat icon button that opens/closes the AI chat panel",
+    "Clicking mic in chat panel replaces message area with inline voice UI (no full-screen overlay)",
+    "Voice mode shows mic button and listening indicator within the chat panel bounds",
+    "Escape still closes the chat panel",
+    "npm run build passes without errors"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

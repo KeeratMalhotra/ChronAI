@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, useAnimationControls } from "framer-motion";
-import { Music, X } from "lucide-react";
+import { X, Play, Pause, Volume2 } from "lucide-react";
 
 const STORAGE_KEY = "chronai-spotify-player";
 const CONNECTED_KEY = "chronai-spotify-connected";
@@ -56,8 +56,9 @@ const DEFAULT_STATE: PlayerState = {
 };
 
 const CARD_WIDTH = 320;
-const CARD_HEIGHT = 200;
-const SNAPPED_BUTTON_SIZE = 36;
+const CARD_HEIGHT = 260;
+const SNAPPED_WIDTH = 40;
+const SNAPPED_HEIGHT = 80;
 
 export default function SpotifyMiniPlayer() {
   const [connected, setConnected] = useState(false);
@@ -66,6 +67,8 @@ export default function SpotifyMiniPlayer() {
   const [buttonY, setButtonY] = useState<number | null>(null);
   const [viewportHeight, setViewportHeight] = useState<number>(typeof window !== "undefined" ? window.innerHeight : 800);
   const [embedUrl, setEmbedUrl] = useState<string>(DEFAULT_EMBED_URL);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(75);
   const constraintsRef = useRef<HTMLDivElement>(null);
   const controls = useAnimationControls();
   const motionX = useMotionValue(0);
@@ -221,10 +224,10 @@ export default function SpotifyMiniPlayer() {
     setTimeout(() => { isDraggingRef.current = false; }, 200);
 
     const currentY = buttonMotionY.get();
-    const baseY = buttonY ?? (typeof window !== "undefined" ? window.innerHeight / 2 - SNAPPED_BUTTON_SIZE / 2 : 300);
+    const baseY = buttonY ?? (typeof window !== "undefined" ? window.innerHeight / 2 - SNAPPED_HEIGHT / 2 : 300);
     const newY = baseY + currentY;
     // Clamp to viewport
-    const maxY = (typeof window !== "undefined" ? window.innerHeight : 800) - SNAPPED_BUTTON_SIZE;
+    const maxY = (typeof window !== "undefined" ? window.innerHeight : 800) - SNAPPED_HEIGHT;
     const clampedY = Math.max(0, Math.min(newY, maxY));
     setButtonY(clampedY);
     localStorage.setItem(BUTTON_Y_STORAGE_KEY, String(clampedY));
@@ -232,98 +235,195 @@ export default function SpotifyMiniPlayer() {
     buttonMotionY.set(0);
   };
 
-  // Snapped (collapsed) state - small button on right edge, draggable vertically only
-  if (playerState.snapped) {
-    const topPosition = buttonY ?? (typeof window !== "undefined" ? window.innerHeight / 2 - SNAPPED_BUTTON_SIZE / 2 : 300);
-    const maxDragUp = -topPosition;
-    const maxDragDown = viewportHeight - SNAPPED_BUTTON_SIZE - topPosition;
+  const handlePlayPauseToggle = () => {
+    if (isDraggingRef.current) return;
+    setIsPlaying((prev) => !prev);
+  };
 
-    return (
-      <motion.div
-        drag="y"
-        dragMomentum={false}
-        dragConstraints={{ top: maxDragUp, bottom: maxDragDown }}
-        onDragEnd={handleButtonDragEnd}
-        style={{
-          y: buttonMotionY,
-          width: SNAPPED_BUTTON_SIZE,
-          height: SNAPPED_BUTTON_SIZE,
-          right: 0,
-          top: topPosition,
-        }}
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.8 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={handleExpand}
-        className="fixed z-[60] flex items-center justify-center rounded-xl border border-gray-700/50 bg-gray-900/80 backdrop-blur-sm hover:bg-gray-800/90 transition-all duration-200 cursor-grab active:cursor-grabbing"
-        role="button"
-        tabIndex={0}
-        aria-label="Expand Spotify player"
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleExpand(); }}
-      >
-        <Music size={16} strokeWidth={1.5} className="text-gray-300" />
-        {/* Connected indicator dot - only show when actually connected */}
-        {connected && (
-          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-gray-900/80" />
-        )}
-      </motion.div>
-    );
-  }
+  const topPosition = buttonY ?? (typeof window !== "undefined" ? window.innerHeight / 2 - SNAPPED_HEIGHT / 2 : 300);
+  const maxDragUp = -topPosition;
+  const maxDragDown = viewportHeight - SNAPPED_HEIGHT - topPosition;
 
-  // Expanded card state
+  // The iframe is ALWAYS rendered. When snapped, it is positioned offscreen but stays in the DOM.
   return (
     <>
-      {/* Invisible constraint boundary */}
+      {/* Invisible constraint boundary for expanded card drag */}
       <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-[59]" />
 
-      <motion.div
-        drag
-        dragMomentum={false}
-        dragConstraints={constraintsRef}
-        onDragEnd={handleCardDragEnd}
-        animate={controls}
-        style={{ x: motionX, y: motionY }}
-        className="fixed top-0 left-0 z-[60] cursor-grab active:cursor-grabbing"
-      >
+      {/* Always-mounted iframe container */}
+      {/* When snapped: hidden offscreen. When expanded: visible inside the card. */}
+      {playerState.snapped && (
         <div
-          className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm overflow-hidden"
-          style={{ width: CARD_WIDTH }}
+          className="fixed"
+          style={{
+            top: 0,
+            left: -9999,
+            width: CARD_WIDTH,
+            opacity: 0,
+            pointerEvents: "none",
+            position: "fixed",
+            zIndex: -1,
+          }}
+          aria-hidden="true"
         >
-          {/* Drag handle */}
-          <div className="flex items-center justify-center pt-2 pb-1">
-            <div className="h-1 w-8 rounded-full bg-[var(--text-tertiary)] opacity-40" />
-          </div>
-
-          {/* Close/minimize button */}
-          <div className="flex justify-end px-3 pb-1">
-            <button
-              onClick={handleCollapse}
-              className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-[var(--surface-hover)] transition-colors"
-              aria-label="Minimize Spotify player"
-            >
-              <X size={14} strokeWidth={1.5} className="text-[var(--text-tertiary)]" />
-            </button>
-          </div>
-
-          {/* Spotify embed */}
-          <div className="px-3 pb-3">
-            <iframe
-              src={embedUrl}
-              width="100%"
-              height="152"
-              frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              allowFullScreen
-              loading="lazy"
-              style={{ borderRadius: "12px" }}
-              title="Spotify Player"
-            />
-          </div>
+          <iframe
+            src={embedUrl}
+            width="100%"
+            height="152"
+            frameBorder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            allowFullScreen
+            loading="lazy"
+            style={{ borderRadius: "12px" }}
+            title="Spotify Player"
+          />
         </div>
-      </motion.div>
+      )}
+
+      {/* Snapped state: semi-circle on right edge */}
+      {playerState.snapped && (
+        <motion.div
+          drag="y"
+          dragMomentum={false}
+          dragConstraints={{ top: maxDragUp, bottom: maxDragDown }}
+          onDragEnd={handleButtonDragEnd}
+          style={{
+            y: buttonMotionY,
+            width: SNAPPED_WIDTH,
+            height: SNAPPED_HEIGHT,
+            right: 0,
+            top: topPosition,
+            borderRadius: "80px 0 0 80px",
+          }}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          whileHover={{ width: SNAPPED_WIDTH + 4 }}
+          whileTap={{ scale: 0.96 }}
+          onClick={handlePlayPauseToggle}
+          onDoubleClick={handleExpand}
+          className="fixed z-[60] flex items-center justify-center border border-r-0 border-gray-700/50 bg-gray-900/90 backdrop-blur-sm hover:bg-gray-800/90 transition-all duration-200 cursor-grab active:cursor-grabbing"
+          role="button"
+          tabIndex={0}
+          aria-label={isPlaying ? "Pause Spotify" : "Play Spotify"}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handlePlayPauseToggle();
+          }}
+        >
+          {isPlaying ? (
+            <Pause size={16} strokeWidth={1.5} className="text-gray-300" />
+          ) : (
+            <Play size={16} strokeWidth={1.5} className="text-gray-300 ml-0.5" />
+          )}
+          {/* Connected indicator dot */}
+          {connected && (
+            <span className="absolute -top-0.5 -left-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-gray-900/90" />
+          )}
+        </motion.div>
+      )}
+
+      {/* Expanded card state */}
+      {!playerState.snapped && (
+        <motion.div
+          drag
+          dragMomentum={false}
+          dragConstraints={constraintsRef}
+          onDragEnd={handleCardDragEnd}
+          animate={controls}
+          style={{ x: motionX, y: motionY }}
+          className="fixed top-0 left-0 z-[60] cursor-grab active:cursor-grabbing"
+        >
+          <div
+            className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm overflow-hidden"
+            style={{ width: CARD_WIDTH }}
+          >
+            {/* Drag handle */}
+            <div className="flex items-center justify-center pt-2 pb-1">
+              <div className="h-1 w-8 rounded-full bg-[var(--text-tertiary)] opacity-40" />
+            </div>
+
+            {/* Header: Now Playing + Close button */}
+            <div className="flex items-center justify-between px-3 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-medium text-[var(--text-secondary)]">
+                    Now Playing
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={handleCollapse}
+                className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-[var(--surface-hover)] transition-colors"
+                aria-label="Minimize Spotify player"
+              >
+                <X size={14} strokeWidth={1.5} className="text-[var(--text-tertiary)]" />
+              </button>
+            </div>
+
+            {/* Volume slider */}
+            <div className="flex items-center gap-2 px-3 pb-2">
+              <Volume2 size={14} strokeWidth={1.5} className="text-[var(--text-tertiary)] flex-shrink-0" />
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={volume}
+                onChange={(e) => setVolume(Number(e.target.value))}
+                className="spotify-volume-slider w-full h-1 rounded-full appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, var(--text-secondary) 0%, var(--text-secondary) ${volume}%, var(--border) ${volume}%, var(--border) 100%)`,
+                }}
+                aria-label="Volume"
+              />
+              <span className="text-[10px] text-[var(--text-tertiary)] w-6 text-right tabular-nums">
+                {volume}
+              </span>
+            </div>
+
+            {/* Spotify embed */}
+            <div className="px-3 pb-3">
+              <iframe
+                src={embedUrl}
+                width="100%"
+                height="152"
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                allowFullScreen
+                loading="lazy"
+                style={{ borderRadius: "12px" }}
+                title="Spotify Player"
+              />
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Volume slider custom styles */}
+      <style jsx global>{`
+        .spotify-volume-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: var(--text-secondary);
+          cursor: pointer;
+          transition: transform 0.15s ease;
+        }
+        .spotify-volume-slider::-webkit-slider-thumb:hover {
+          transform: scale(1.3);
+        }
+        .spotify-volume-slider::-moz-range-thumb {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: var(--text-secondary);
+          border: none;
+          cursor: pointer;
+        }
+      `}</style>
     </>
   );
 }

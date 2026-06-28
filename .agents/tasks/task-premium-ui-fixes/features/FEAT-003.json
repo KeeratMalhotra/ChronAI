@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Toast Sound + Visual Improvement, Top Navbar Action Button (replacing bottom-right FAB from dashboard page), Profile Picture Upload, and Cache Integration Status on settings page.",
+  "status": "pending",
+  "steps": [
+    "TOAST IMPROVEMENTS in frontend/components/ai/AIToast.tsx: (a) Add a playNotificationSound() function that uses Web Audio API to generate a short 200ms sine wave at 800Hz with quick exponential fade-out (gain from 0.3 to 0 over 200ms). Call it when a new toast appears (in ToastItem useEffect on mount). (b) Change the entrance animation from the current slide-from-right to a spring bounce: initial scale 0.8 + y offset, animate to scale 1 with type:'spring', stiffness ~500, damping ~25 (overshoot effect). (c) Add a left-border accent color on the toast card: border-l-3 with accent-500 for info/sparkles type, warning-500 for warning type.",
+    "TOP NAVBAR ACTION BUTTON: (a) In frontend/app/dashboard/page.tsx: Remove the entire 'Quick Actions FAB' section at the bottom (the fixed bottom-6 right-6 div with the Plus button and the AnimatePresence dropdown). Keep the fabOpen state removal clean -- remove the state variable and all references. (b) In frontend/components/layout/TopBar.tsx: Add a '+' action button in the right section (before the search button). On click, toggle a dropdown menu below it. The dropdown shows: Add Task, Add Event, Start Pomodoro, Start Focus. Style the dropdown as a Card-like panel with border border-[var(--border)] bg-[var(--surface)] rounded-xl shadow-lg. Each item has an icon + label. Use click-outside to close. The button dispatches custom events or uses router.push for navigation actions.",
+    "PROFILE PICTURE UPLOAD in frontend/app/dashboard/settings/page.tsx: In the Profile section where the user avatar is shown, add a 'Change Photo' overlay/button on hover over the avatar. On click, open a hidden file input (accept='image/*'). On file select, read as base64 with FileReader, store in localStorage key 'chronai-profile-picture'. Display the custom photo from localStorage instead of the Google photo (user?.image) when the localStorage value is set. Add a small 'Remove' link below to clear it.",
+    "CACHE INTEGRATION STATUS in frontend/app/dashboard/settings/page.tsx: On component mount (in the first useEffect that loads localStorage values), also read localStorage key 'chronai-integration-status-cache'. If present, parse it and use it as the initial value for integrationStatus state. Then when fetchIntegrationStatus returns fresh data, update both the state AND write the fresh data to that same localStorage cache key. This prevents the flash from 'all disconnected' to 'connected' on page load."
+  ],
+  "acceptance_criteria": [
+    "Toast notifications play a subtle pop sound when appearing (Web Audio API, 200ms 800Hz sine wave)",
+    "Toast entrance uses a spring bounce animation with overshoot",
+    "Toast cards have a left border accent color (indigo for info, amber for warning)",
+    "No bottom-right FAB plus button on the dashboard page",
+    "TopBar has a '+' button that opens a dropdown with Add Task, Add Event, Start Pomodoro, Start Focus",
+    "Settings profile section shows a Change Photo overlay on avatar hover",
+    "Selecting a photo stores base64 in localStorage and displays it as the avatar",
+    "Settings page shows cached integration status immediately on load before backend fetch completes",
+    "npm run build passes without errors"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
