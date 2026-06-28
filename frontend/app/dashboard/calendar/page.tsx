@@ -352,6 +352,7 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [navDirection, setNavDirection] = useState(0);
   const [calendarDisconnected, setCalendarDisconnected] = useState(false);
+  const [calendarQueueCount, setCalendarQueueCount] = useState(0);
 
   // Detect mobile viewport for responsive view override
   useEffect(() => {
@@ -375,6 +376,17 @@ export default function CalendarPage() {
       }
     } catch {
       setCalendarDisconnected(true);
+    }
+
+    // Check offline calendar queue count
+    try {
+      const queue = localStorage.getItem("chronai-calendar-queue");
+      if (queue) {
+        const parsed = JSON.parse(queue);
+        if (Array.isArray(parsed)) setCalendarQueueCount(parsed.length);
+      }
+    } catch {
+      // ignore
     }
   }, []);
 
@@ -400,6 +412,18 @@ export default function CalendarPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
+
+  // Helper: add an operation to the offline calendar queue
+  const enqueueCalendarOperation = useCallback((operation: { type: string; data: any; timestamp: number }) => {
+    try {
+      const queue = JSON.parse(localStorage.getItem("chronai-calendar-queue") || "[]");
+      queue.push(operation);
+      localStorage.setItem("chronai-calendar-queue", JSON.stringify(queue));
+      setCalendarQueueCount(queue.length);
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
 
   // Scroll container refs for day/week views
   const weekScrollRef = useRef<HTMLDivElement>(null);
@@ -682,7 +706,7 @@ export default function CalendarPage() {
         duration: newDuration,
       });
     } catch {
-      // If API fails, add locally but do not report to AI (event may not exist)
+      // If API fails, add locally
       const startISO = new Date(startTime).toISOString();
       const endISO = new Date(
         new Date(startTime).getTime() + newDuration * 60000
@@ -696,6 +720,14 @@ export default function CalendarPage() {
           end: endISO,
         },
       ]);
+      // Queue for later sync if disconnected
+      if (calendarDisconnected) {
+        enqueueCalendarOperation({
+          type: "create",
+          data: { summary: newSummary.trim(), start_time: startTime, duration_minutes: newDuration },
+          timestamp: Date.now(),
+        });
+      }
     } finally {
       setCreatingEvent(false);
     }
@@ -714,7 +746,14 @@ export default function CalendarPage() {
       try {
         await deleteCalendarEvent(accessToken, event.id);
       } catch {
-        // Continue with local removal
+        // Queue for later sync if disconnected
+        if (calendarDisconnected) {
+          enqueueCalendarOperation({
+            type: "delete",
+            data: { eventId: event.id },
+            timestamp: Date.now(),
+          });
+        }
       }
     }
     setEvents((prev) => prev.filter((e) => (event.id ? e.id !== event.id : e !== event)));
@@ -831,7 +870,7 @@ export default function CalendarPage() {
       {calendarDisconnected && (
         <div className="mb-4 flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
           <p className="text-sm text-[var(--text-secondary)]">
-            Connect your Google Calendar to see your events
+            Google Calendar is not connected. Connect in Settings to sync your events.
           </p>
           <Link
             href="/dashboard/settings"
@@ -839,6 +878,16 @@ export default function CalendarPage() {
           >
             Connect
           </Link>
+        </div>
+      )}
+
+      {/* Pending Sync Indicator */}
+      {calendarQueueCount > 0 && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-warning-500/20 bg-warning-500/5 px-4 py-2.5">
+          <span className="h-2 w-2 rounded-full bg-warning-500 animate-pulse" />
+          <p className="text-xs font-medium text-warning-600 dark:text-warning-400">
+            {calendarQueueCount} change{calendarQueueCount !== 1 ? "s" : ""} pending sync
+          </p>
         </div>
       )}
 

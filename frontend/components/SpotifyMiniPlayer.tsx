@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Music, X, Play, Pause } from "lucide-react";
 
-const CONNECTED_KEY = "chronai-spotify-connected";
 const PLAYLIST_URL_KEY = "chronai-spotify-playlist-url";
 
 const DEFAULT_EMBED_URL =
@@ -36,30 +35,38 @@ function toSpotifyEmbedUrl(url: string): string | null {
  * - The iframe is always mounted so music never stops.
  */
 export default function SpotifyMiniPlayer() {
-  const [connected, setConnected] = useState(false);
+  const [hasPlaylist, setHasPlaylist] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [embedUrl, setEmbedUrl] = useState(DEFAULT_EMBED_URL);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setConnected(localStorage.getItem(CONNECTED_KEY) === "true");
     const customUrl = localStorage.getItem(PLAYLIST_URL_KEY);
     if (customUrl) {
       const converted = toSpotifyEmbedUrl(customUrl);
-      if (converted) setEmbedUrl(converted);
+      if (converted) {
+        setEmbedUrl(converted);
+        setHasPlaylist(true);
+      }
     }
   }, []);
 
   // Listen for changes from settings
   useEffect(() => {
     const handleStorage = () => {
-      setConnected(localStorage.getItem(CONNECTED_KEY) === "true");
       const customUrl = localStorage.getItem(PLAYLIST_URL_KEY);
       if (customUrl) {
         const converted = toSpotifyEmbedUrl(customUrl);
-        if (converted) setEmbedUrl(converted);
+        if (converted) {
+          setEmbedUrl(converted);
+          setHasPlaylist(true);
+        } else {
+          setHasPlaylist(false);
+          setEmbedUrl(DEFAULT_EMBED_URL);
+        }
       } else {
+        setHasPlaylist(false);
         setEmbedUrl(DEFAULT_EMBED_URL);
       }
     };
@@ -71,7 +78,7 @@ export default function SpotifyMiniPlayer() {
     };
   }, []);
 
-  if (!mounted || !connected) return null;
+  if (!mounted || !hasPlaylist) return null;
 
   return (
     <>

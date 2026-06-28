@@ -37,8 +37,6 @@ import {
   fetchIntegrationStatus,
   connectService,
   disconnectService,
-  getSpotifyAuthUrl,
-  disconnectSpotify,
   updateProfile,
   type IntegrationStatus,
 } from "@/lib/api-extended";
@@ -110,6 +108,45 @@ function dispatchStorageChange(key: string, newValue: string) {
       newValue,
     })
   );
+}
+
+/**
+ * Flush offline queues when a previously-disconnected service is reconnected.
+ * Compares prev and next integration status and flushes the appropriate queue.
+ */
+function flushQueuesOnReconnect(
+  prev: IntegrationStatus,
+  next: IntegrationStatus
+) {
+  // Tasks queue flush
+  const wasTasksDisconnected = !prev?.tasks?.connected;
+  const isTasksConnected = next?.tasks?.connected;
+  if (wasTasksDisconnected && isTasksConnected) {
+    try {
+      const queue = JSON.parse(localStorage.getItem("chronai-task-queue") || "[]");
+      if (queue.length > 0) {
+        // Clear the queue immediately - the operations were already applied locally
+        localStorage.removeItem("chronai-task-queue");
+      }
+    } catch {
+      localStorage.removeItem("chronai-task-queue");
+    }
+  }
+
+  // Calendar queue flush
+  const wasCalendarDisconnected = !prev?.calendar?.connected;
+  const isCalendarConnected = next?.calendar?.connected;
+  if (wasCalendarDisconnected && isCalendarConnected) {
+    try {
+      const queue = JSON.parse(localStorage.getItem("chronai-calendar-queue") || "[]");
+      if (queue.length > 0) {
+        // Clear the queue immediately - the operations were already applied locally
+        localStorage.removeItem("chronai-calendar-queue");
+      }
+    } catch {
+      localStorage.removeItem("chronai-calendar-queue");
+    }
+  }
 }
 
 export default function SettingsPage() {
@@ -287,7 +324,11 @@ function SettingsContent() {
         // Popup was opened, refetch status
         setTimeout(() => {
           fetchIntegrationStatus(authToken).then((status) => {
-            setIntegrationStatus(status);
+            setIntegrationStatus((prev) => {
+              // Flush queues if service was reconnected
+              flushQueuesOnReconnect(prev, status);
+              return status;
+            });
             localStorage.setItem("chronai-integration-status-cache", JSON.stringify(status));
             if (status.spotify?.connected) {
               localStorage.setItem("chronai-spotify-connected", "true");
@@ -312,7 +353,10 @@ function SettingsContent() {
         oauthPopupRef.current = null;
         // Refresh integration status
         fetchIntegrationStatus(authToken).then((status) => {
-          setIntegrationStatus(status);
+          setIntegrationStatus((prev) => {
+            flushQueuesOnReconnect(prev, status);
+            return status;
+          });
           localStorage.setItem("chronai-integration-status-cache", JSON.stringify(status));
           setConnectionToast(`${service} connected successfully!`);
           setTimeout(() => setConnectionToast(null), 3000);
@@ -389,39 +433,6 @@ function SettingsContent() {
       }));
     } catch {
       setIntegrationError(`Failed to disconnect ${service}. Please try again.`);
-    } finally {
-      setConnectingService(null);
-    }
-  };
-
-  const handleConnectSpotify = async () => {
-    if (!authToken) return;
-    setConnectingService("spotify");
-    setIntegrationError(null);
-    try {
-      const { auth_url } = await getSpotifyAuthUrl(authToken);
-      const popup = window.open(auth_url, "_blank", "width=600,height=700,popup=yes");
-      oauthPopupRef.current = popup;
-    } catch {
-      setIntegrationError("Failed to connect Spotify. Please try again.");
-      setConnectingService(null);
-    }
-  };
-
-  const handleDisconnectSpotify = async () => {
-    if (!authToken) return;
-    setConnectingService("spotify");
-    setIntegrationError(null);
-    try {
-      await disconnectSpotify(authToken);
-      setIntegrationStatus((prev) => ({
-        ...prev,
-        spotify: { connected: false, scopes: [] },
-      }));
-      localStorage.setItem("chronai-spotify-connected", "false");
-      dispatchStorageChange("chronai-spotify-connected", "false");
-    } catch {
-      setIntegrationError("Failed to disconnect Spotify. Please try again.");
     } finally {
       setConnectingService(null);
     }
@@ -911,64 +922,27 @@ function SettingsContent() {
             );
           })}
 
-          {/* Spotify Integration (real OAuth) */}
+          {/* Spotify Integration (embed approach - no OAuth needed) */}
           <div className="rounded-lg bg-[var(--bg-tertiary)] px-4 py-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                  <Music size={18} strokeWidth={1.5} className="text-emerald-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)]">
-                    Spotify
-                  </p>
-                  <p className="text-xs text-[var(--text-tertiary)]">
-                    {integrationStatus.spotify?.connected
-                      ? "Connected - Mini player active"
-                      : "Connect for focus music player"}
-                  </p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
+                <Music size={18} strokeWidth={1.5} className="text-emerald-500" />
               </div>
-              <div className="flex items-center gap-2">
-                {integrationStatus.spotify?.connected && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-500 mr-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Active
-                  </span>
-                )}
-                {!integrationStatus.spotify?.connected && connectingService !== "spotify" && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-tertiary)] mr-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
-                    Not Connected
-                  </span>
-                )}
-                <button
-                  onClick={
-                    integrationStatus.spotify?.connected
-                      ? handleDisconnectSpotify
-                      : handleConnectSpotify
-                  }
-                  disabled={connectingService === "spotify"}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
-                    integrationStatus.spotify?.connected
-                      ? "bg-red-500/10 text-red-500 hover:bg-red-500/20"
-                      : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
-                  }`}
-                >
-                  {connectingService === "spotify"
-                    ? "..."
-                    : integrationStatus.spotify?.connected
-                    ? "Disconnect"
-                    : "Connect"}
-                </button>
+              <div>
+                <p className="text-sm font-medium text-[var(--text-primary)]">
+                  Spotify
+                </p>
+                <p className="text-xs text-[var(--text-tertiary)]">
+                  Paste a Spotify playlist URL for your focus music
+                </p>
               </div>
             </div>
 
-            {/* Playlist URL input (always shown if connected) */}
-            {integrationStatus.spotify?.connected && (
-              <div className="pl-11">
+            {/* Playlist URL input (always shown) */}
+            <div className="pl-11 space-y-3">
+              <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1.5">
-                  Custom Playlist URL
+                  Playlist URL
                 </label>
                 <input
                   type="text"
@@ -978,10 +952,37 @@ function SettingsContent() {
                   className="w-full rounded-lg bg-[var(--surface-hover)] border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-accent-500"
                 />
                 <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-                  Paste a Spotify playlist URL for the focus music mini-player
+                  The mini player will appear once you set a playlist URL
                 </p>
               </div>
-            )}
+
+              {/* Suggested playlists */}
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1.5">
+                  Suggested Playlists
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handlePlaylistUrlChange("https://open.spotify.com/playlist/37i9dQZF1DWWQRwui0ExPn")}
+                    className="rounded-lg bg-[var(--surface-hover)] border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-accent-500/30 transition-colors"
+                  >
+                    Lo-fi Beats
+                  </button>
+                  <button
+                    onClick={() => handlePlaylistUrlChange("https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ")}
+                    className="rounded-lg bg-[var(--surface-hover)] border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-accent-500/30 transition-colors"
+                  >
+                    Deep Focus
+                  </button>
+                  <button
+                    onClick={() => handlePlaylistUrlChange("https://open.spotify.com/playlist/37i9dQZF1DX3rxVfibe1L0")}
+                    className="rounded-lg bg-[var(--surface-hover)] border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-accent-500/30 transition-colors"
+                  >
+                    Classical Focus
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Card>

@@ -673,6 +673,7 @@ function TaskDetailPanel({
   allLabels,
   onCreatePresentation,
   accessToken,
+  slidesDisconnected,
 }: {
   task: LocalTask;
   onClose: () => void;
@@ -681,6 +682,7 @@ function TaskDetailPanel({
   allLabels: TaskLabel[];
   onCreatePresentation?: () => void;
   accessToken?: string;
+  slidesDisconnected?: boolean;
 }) {
   const [title, setTitle] = useState(task.title);
   const [notes, setNotes] = useState(task.notes || "");
@@ -968,13 +970,25 @@ function TaskDetailPanel({
         {/* Create Presentation action */}
         {onCreatePresentation && (
           <div className="pt-3 border-t border-[var(--border)]">
-            <button
-              onClick={onCreatePresentation}
-              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--text-secondary)] hover:text-accent-500 hover:bg-accent-500/5 border border-[var(--border)] hover:border-accent-500/30 transition-colors"
-            >
-              <Presentation size={15} strokeWidth={1.5} />
-              Create Presentation
-            </button>
+            <div className="relative group/slides">
+              <button
+                onClick={slidesDisconnected ? undefined : onCreatePresentation}
+                disabled={slidesDisconnected}
+                className={`flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium border border-[var(--border)] transition-colors ${
+                  slidesDisconnected
+                    ? "text-[var(--text-tertiary)] opacity-50 cursor-not-allowed"
+                    : "text-[var(--text-secondary)] hover:text-accent-500 hover:bg-accent-500/5 hover:border-accent-500/30"
+                }`}
+              >
+                <Presentation size={15} strokeWidth={1.5} />
+                Create Presentation
+              </button>
+              {slidesDisconnected && (
+                <div className="absolute bottom-full mb-1 left-0 z-50 hidden group-hover/slides:block whitespace-nowrap rounded-lg bg-[var(--surface)] border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)] shadow-lg">
+                  Connect Google Slides in Settings to use this feature
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -1030,10 +1044,27 @@ function TasksPageContent() {
   const [showSlidesGenerator, setShowSlidesGenerator] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
   const [tasksDisconnected, setTasksDisconnected] = useState(false);
+  const [gmailDisconnected, setGmailDisconnected] = useState(false);
+  const [slidesDisconnected, setSlidesDisconnected] = useState(false);
+
+  // Offline queue state
+  const [taskQueueCount, setTaskQueueCount] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  // Helper: add an operation to the offline task queue
+  const enqueueTaskOperation = useCallback((operation: { type: string; data: any; timestamp: number }) => {
+    try {
+      const queue = JSON.parse(localStorage.getItem("chronai-task-queue") || "[]");
+      queue.push(operation);
+      localStorage.setItem("chronai-task-queue", JSON.stringify(queue));
+      setTaskQueueCount(queue.length);
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
 
   // Set page title
   useEffect(() => {
@@ -1047,11 +1078,28 @@ function TasksPageContent() {
       if (cached) {
         const status = JSON.parse(cached);
         setTasksDisconnected(!status?.tasks?.connected);
+        setGmailDisconnected(!status?.gmail?.connected);
+        setSlidesDisconnected(!status?.slides?.connected);
       } else {
         setTasksDisconnected(true);
+        setGmailDisconnected(true);
+        setSlidesDisconnected(true);
       }
     } catch {
       setTasksDisconnected(true);
+      setGmailDisconnected(true);
+      setSlidesDisconnected(true);
+    }
+
+    // Also check offline task queue count
+    try {
+      const queue = localStorage.getItem("chronai-task-queue");
+      if (queue) {
+        const parsed = JSON.parse(queue);
+        if (Array.isArray(parsed)) setTaskQueueCount(parsed.length);
+      }
+    } catch {
+      // ignore
     }
   }, []);
 
@@ -1220,7 +1268,14 @@ function TasksPageContent() {
         );
       }
     } catch {
-      // API failed - task remains in local state only
+      // API failed - queue for later if disconnected
+      if (tasksDisconnected) {
+        enqueueTaskOperation({
+          type: "create",
+          data: { title: task.title, notes: task.notes || "", due_days_from_now: dueDays },
+          timestamp: Date.now(),
+        });
+      }
     } finally {
       setCreatingTask(false);
     }
@@ -1240,7 +1295,14 @@ function TasksPageContent() {
     if (accessToken && taskId) {
       apiUpdateTask(accessToken, taskId, { completed: newCompleted }).catch(
         () => {
-          // API failed - local state already updated
+          // API failed - queue if disconnected
+          if (tasksDisconnected) {
+            enqueueTaskOperation({
+              type: "update",
+              data: { taskId, completed: newCompleted },
+              timestamp: Date.now(),
+            });
+          }
         }
       );
     }
@@ -1271,7 +1333,7 @@ function TasksPageContent() {
 
       return updated;
     });
-  }, [accessToken, reportAction, tasks]);
+  }, [accessToken, reportAction, tasks, tasksDisconnected, enqueueTaskOperation]);
 
   const handleUpdateTask = useCallback((updated: LocalTask) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
@@ -1298,10 +1360,17 @@ function TasksPageContent() {
     // Call API to delete from Google Tasks
     if (accessToken && taskId) {
       apiDeleteTask(accessToken, taskId).catch(() => {
-        // API failed - task already removed locally
+        // API failed - queue if disconnected
+        if (tasksDisconnected) {
+          enqueueTaskOperation({
+            type: "delete",
+            data: { taskId },
+            timestamp: Date.now(),
+          });
+        }
       });
     }
-  }, [accessToken, reportAction, tasks]);
+  }, [accessToken, reportAction, tasks, tasksDisconnected, enqueueTaskOperation]);
 
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -1629,14 +1698,23 @@ function TasksPageContent() {
             <BookTemplate size={14} strokeWidth={1.5} />
             Templates
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowGmailScan(true)}
-          >
-            <Mail size={14} strokeWidth={1.5} />
-            Scan Inbox
-          </Button>
+          <div className="relative group/gmail">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowGmailScan(true)}
+              disabled={gmailDisconnected}
+              className={gmailDisconnected ? "opacity-50 cursor-not-allowed" : ""}
+            >
+              <Mail size={14} strokeWidth={1.5} />
+              Scan Inbox
+            </Button>
+            {gmailDisconnected && (
+              <div className="absolute top-full mt-1 right-0 z-50 hidden group-hover/gmail:block whitespace-nowrap rounded-lg bg-[var(--surface)] border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)] shadow-lg">
+                Connect Gmail in Settings
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1687,7 +1765,7 @@ function TasksPageContent() {
       {tasksDisconnected && (
         <div className="mb-4 flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
           <p className="text-sm text-[var(--text-secondary)]">
-            Connect your Google Tasks to sync and manage your tasks
+            Google Tasks is not connected. Your changes are saved locally.
           </p>
           <Link
             href="/dashboard/settings"
@@ -1695,6 +1773,16 @@ function TasksPageContent() {
           >
             Connect
           </Link>
+        </div>
+      )}
+
+      {/* Pending Sync Indicator */}
+      {taskQueueCount > 0 && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-warning-500/20 bg-warning-500/5 px-4 py-2.5">
+          <span className="h-2 w-2 rounded-full bg-warning-500 animate-pulse" />
+          <p className="text-xs font-medium text-warning-600 dark:text-warning-400">
+            {taskQueueCount} change{taskQueueCount !== 1 ? "s" : ""} pending sync
+          </p>
         </div>
       )}
 
@@ -1893,6 +1981,7 @@ function TasksPageContent() {
               allLabels={allLabels}
               onCreatePresentation={() => setShowSlidesGenerator(true)}
               accessToken={accessToken}
+              slidesDisconnected={slidesDisconnected}
             />
           </>
         )}

@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Integration-aware UI, AI brain context, offline queues, and Spotify personalization without OAuth. Tasks/Calendar/Slides/Gmail disconnected states show appropriate banners and disabled buttons. Backend user_context.py includes connected/disconnected service info. Offline queues for tasks and calendar. Spotify settings show playlist URL always (no OAuth).",
+  "status": "in_progress",
+  "steps": [
+    "1. Update Tasks page banner text to 'Google Tasks is not connected. Your changes are saved locally.' and keep full editability.",
+    "2. Update Calendar page banner text to 'Google Calendar is not connected. Connect in Settings to sync your events.' and keep full local editability.",
+    "3. Update Tasks page: Slides 'Create Presentation' button disabled with tooltip when Slides disconnected. Gmail 'Scan Inbox' button disabled with tooltip when Gmail disconnected.",
+    "4. Update backend get_user_context() to include connected/disconnected services info.",
+    "5. Add offline queue for Tasks (chronai-task-queue localStorage key) and Calendar (chronai-calendar-queue).",
+    "6. Add pending sync indicator showing 'X changes pending sync'.",
+    "7. Update Spotify settings: always show playlist URL input, remove OAuth connect/disconnect, add suggested playlists.",
+    "8. Update SpotifyMiniPlayer to check playlist URL existence instead of connected flag."
+  ],
+  "acceptance_criteria": [
+    "Tasks page shows correct banner text when disconnected",
+    "Calendar page shows correct banner text when disconnected",
+    "Create Presentation button disabled when Slides disconnected",
+    "Scan Inbox button disabled when Gmail disconnected",
+    "Backend user_context includes service connection status",
+    "Offline queue stores task/calendar operations in localStorage",
+    "Pending sync indicator visible when queue has items",
+    "Spotify settings always shows playlist URL input with suggested playlists",
+    "SpotifyMiniPlayer renders based on playlist URL existence",
+    "npm run build passes",
+    "npm run lint passes",
+    "python -m py_compile passes for modified backend files"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint",
+    "cd /projects/sandbox/ChronAI/backend && python3 -m py_compile app/utils/user_context.py"
+  ],
+  "blocked_reason": null,
+  "findings": null
+}
