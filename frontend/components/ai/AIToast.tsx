@@ -78,7 +78,7 @@ function ToastItem({
 
     timerRef.current = setTimeout(() => {
       onDismiss();
-    }, 12000);
+    }, 30000);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -121,9 +121,10 @@ function ToastItem({
         </div>
         <button
           onClick={onDismiss}
-          className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors shrink-0 cursor-pointer"
+          className="rounded-md p-1 text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] transition-colors shrink-0 cursor-pointer"
+          aria-label="Dismiss"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="w-4 h-4" />
         </button>
       </div>
     </motion.div>
