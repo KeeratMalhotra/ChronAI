@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Integration-aware UI, AI brain context, offline queues, and Spotify personalization without OAuth. Tasks/Calendar/Slides/Gmail disconnected states show appropriate banners and disabled buttons. Backend user_context.py includes connected/disconnected service info. Offline queues for tasks and calendar. Spotify settings show playlist URL always (no OAuth).",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "1. Update Tasks page banner text to 'Google Tasks is not connected. Your changes are saved locally.' and keep full editability.",
     "2. Update Calendar page banner text to 'Google Calendar is not connected. Connect in Settings to sync your events.' and keep full local editability.",
@@ -33,5 +33,5 @@
     "cd /projects/sandbox/ChronAI/backend && python3 -m py_compile app/utils/user_context.py"
   ],
   "blocked_reason": null,
-  "findings": null
+  "findings": "All acceptance criteria met. Build, lint, and py_compile all pass. The SpotifyMiniPlayer now checks for playlist URL existence in chronai-spotify-playlist-url localStorage key. The backend user_context.py reads connected_services and spotify_tokens from Firestore to build an integration status block for AI agents. Offline queues use chronai-task-queue and chronai-calendar-queue localStorage keys. Queue flush happens in Settings page when integration status changes from disconnected to connected."
 }
