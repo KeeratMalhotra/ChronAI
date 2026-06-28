@@ -43,6 +43,26 @@ const config: Config = {
           900: "#312e81",
           950: "#1e1b4b",
         },
+        // Warm cozy spectrum — peach / amber / ember for the "digital living room"
+        warm: {
+          50: "#fdf6f0",
+          100: "#fae9da",
+          200: "#f3d2b6",
+          300: "#ecb98e",
+          400: "#e8a87c",
+          500: "#dd8a5a",
+          600: "#c96f3e",
+          700: "#a8572f",
+          800: "#854629",
+          900: "#6b3a25",
+        },
+        // Soft mauve/clay accents for gentle depth in the cozy scene
+        clay: {
+          200: "#e7d3d8",
+          300: "#d4b3bf",
+          400: "#c89bd4",
+          500: "#b27fae",
+        },
         // Semantic colors
         success: {
           DEFAULT: "#10b981",
@@ -178,7 +198,13 @@ const config: Config = {
           "slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both",
         "scale-in": "scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both",
         float: "float 6s ease-in-out infinite",
+        "float-slow": "float-slow 14s ease-in-out infinite",
         breathe: "breathe 3s ease-in-out infinite",
+        "breathe-slow": "breathe-slow 9s ease-in-out infinite",
+        drift: "drift 26s ease-in-out infinite",
+        aurora: "aurora 24s ease-in-out infinite",
+        ember: "ember 4.5s ease-in-out infinite",
+        "glow-pulse": "glow-pulse 6s ease-in-out infinite",
         shimmer: "shimmer 2s linear infinite",
         "spin-slow": "spin 3s linear infinite",
         "message-in": "message-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
@@ -215,9 +241,36 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-8px)" },
         },
+        "float-slow": {
+          "0%, 100%": { transform: "translateY(0px) translateX(0px)" },
+          "50%": { transform: "translateY(-14px) translateX(6px)" },
+        },
         breathe: {
           "0%, 100%": { transform: "scale(0.97)", opacity: "0.7" },
           "50%": { transform: "scale(1.03)", opacity: "1" },
+        },
+        "breathe-slow": {
+          "0%, 100%": { transform: "scale(1)", opacity: "0.85" },
+          "50%": { transform: "scale(1.04)", opacity: "1" },
+        },
+        drift: {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+          "33%": { transform: "translate(3%, -2.5%) scale(1.03)" },
+          "66%": { transform: "translate(-2.5%, 2%) scale(0.98)" },
+        },
+        aurora: {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)", opacity: "0.5" },
+          "50%": { transform: "translate(-3%, 2%) scale(1.06)", opacity: "0.8" },
+        },
+        ember: {
+          "0%, 100%": { transform: "scaleY(1) scaleX(1)", opacity: "0.85" },
+          "25%": { transform: "scaleY(1.08) scaleX(0.96)", opacity: "1" },
+          "50%": { transform: "scaleY(0.94) scaleX(1.04)", opacity: "0.9" },
+          "75%": { transform: "scaleY(1.05) scaleX(0.98)", opacity: "1" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { opacity: "0.4", transform: "scale(1)" },
+          "50%": { opacity: "0.75", transform: "scale(1.08)" },
         },
         shimmer: {
           "0%": { backgroundPosition: "200% 50%" },

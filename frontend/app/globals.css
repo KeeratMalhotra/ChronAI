@@ -9,47 +9,52 @@
    ============================================================ */
 
 :root {
-  /* Light mode variables - Notion-style cream-white */
-  --bg: #ffffff;
-  --bg-secondary: #fafafa;
-  --bg-tertiary: #f5f5f4;
-  --surface: #ffffff;
-  --surface-hover: #f5f5f4;
-  --surface-elevated: #ffffff;
-  --border: #e8e8e6;
-  --border-subtle: #f0f0ee;
+  /* Light mode — warm cream, cozy not clinical */
+  --bg: #fdfcfa;
+  --bg-secondary: #f8f6f1;
+  --bg-tertiary: #f2efe8;
+  --surface: #fffefb;
+  --surface-hover: #f5f2ea;
+  --surface-elevated: #fffefb;
+  --border: #e9e3d9;
+  --border-subtle: #f1ede4;
   --border-focus: #6366f1;
-  --text-primary: #1a1a1a;
-  --text-secondary: #5c5c5c;
-  --text-tertiary: #9a9a9a;
-  --text-inverse: #ffffff;
+  --text-primary: #2b2722;
+  --text-secondary: #6b6359;
+  --text-tertiary: #9c9389;
+  --text-inverse: #fffefb;
   --accent: #6366f1;
   --accent-hover: #4f46e5;
-  --accent-subtle: #eef2ff;
+  --accent-subtle: #eef0ff;
   --accent-muted: rgba(99, 102, 241, 0.06);
-  --shadow-color: 220 3% 15%;
-  --overlay: rgba(0, 0, 0, 0.4);
+  --warm: #e8a87c;
+  --warm-glow: rgba(232, 168, 124, 0.12);
+  --shadow-color: 30 12% 35%;
+  --overlay: rgba(43, 39, 34, 0.35);
 }
 
 .dark {
-  --bg: #0f0f10;
-  --bg-secondary: #18181b;
-  --bg-tertiary: #232326;
-  --surface: #18181b;
-  --surface-hover: #232326;
-  --surface-elevated: #1c1c1f;
-  --border: #2e2e32;
-  --border-subtle: #232326;
+  /* Dark mode — warm tinted charcoal, calm and low-contrast */
+  --bg: #131211;
+  --bg-secondary: #1a1817;
+  --bg-tertiary: #232120;
+  --surface: #1a1817;
+  --surface-hover: #232120;
+  --surface-elevated: #1e1c1a;
+  --border: #2f2c29;
+  --border-subtle: #211f1d;
   --border-focus: #818cf8;
-  --text-primary: #ededed;
-  --text-secondary: #a1a1aa;
-  --text-tertiary: #8b8b96;
-  --text-inverse: #0f0f10;
+  --text-primary: #ece9e4;
+  --text-secondary: #a8a39c;
+  --text-tertiary: #847e76;
+  --text-inverse: #131211;
   --accent: #818cf8;
   --accent-hover: #6366f1;
-  --accent-subtle: #1e1b4b;
+  --accent-subtle: #1f1d2e;
   --accent-muted: rgba(129, 140, 248, 0.06);
-  --shadow-color: 220 40% 2%;
+  --warm: #e8a87c;
+  --warm-glow: rgba(232, 168, 124, 0.1);
+  --shadow-color: 24 30% 2%;
   --overlay: rgba(0, 0, 0, 0.6);
 }
 
@@ -70,10 +75,18 @@ body {
   background-color: var(--bg);
   color: var(--text-primary);
   overflow: hidden;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Big headings: lighter weight + tighter tracking for a calm, premium feel */
+.text-display {
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 
 /* ============================================================
@@ -132,6 +145,39 @@ body {
   color: transparent;
 }
 
+/* Cozy gradient — warm amber easing into a soft periwinkle accent */
+.gradient-text-cozy {
+  background: linear-gradient(120deg, #e8a87c 0%, #c89bd4 45%, #818cf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ============================================================
+   Grain / Noise Texture — adds warmth and tactility
+   ============================================================ */
+
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.grain-fixed {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='nf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23nf)'/%3E%3C/svg%3E");
+}
+
 /* ============================================================
    Scrollbar Styling
    ============================================================ */
@@ -184,7 +230,7 @@ body {
    ============================================================ */
 
 .hover-surface {
-  transition: background-color 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background-color 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .hover-surface:hover {
@@ -200,7 +246,7 @@ body {
 }
 
 .hover-glow {
-  transition: background-color 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 
 .hover-glow:hover {
@@ -208,7 +254,7 @@ body {
 }
 
 .interactive {
-  transition: background-color 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background-color 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .interactive:hover {
@@ -276,7 +322,7 @@ body {
   top: -16vh;
   background: radial-gradient(
     circle at center,
-    rgba(99, 102, 241, 0.35),
+    rgba(232, 168, 124, 0.28),
     transparent 65%
   );
   animation: ambient-float 16s ease-in-out infinite;
@@ -289,7 +335,7 @@ body {
   bottom: -18vh;
   background: radial-gradient(
     circle at center,
-    rgba(139, 92, 246, 0.3),
+    rgba(129, 140, 248, 0.22),
     transparent 65%
   );
   animation: ambient-float 20s ease-in-out infinite reverse;

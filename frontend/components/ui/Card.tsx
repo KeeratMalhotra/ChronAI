@@ -31,7 +31,7 @@ export function Card({
     <motion.div
       className={`
         border bg-[var(--surface)]
-        transition-colors duration-200
+        transition-colors duration-150
         ${sizeStyles[size]}
         ${accent ? "border-accent-400/20" : "border-[var(--border-subtle)]"}
         ${hover ? "hover:bg-[var(--surface-hover)] hover:border-[var(--border)]" : ""}
