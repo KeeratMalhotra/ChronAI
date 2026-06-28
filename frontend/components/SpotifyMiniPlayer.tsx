@@ -78,7 +78,7 @@ export default function SpotifyMiniPlayer() {
     };
   }, []);
 
-  if (!mounted || !hasPlaylist) return null;
+  if (!mounted) return null;
 
   return (
     <>
