@@ -1,0 +1,35 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Spotify Integration: Create a draggable mini player card widget that floats over the app, can be dragged anywhere on screen, and snaps into a small button when dragged to the right edge. Uses Spotify Web Embed (iframe) for playback. Add Spotify connect option in settings page.",
+  "status": "completed",
+  "steps": [
+    "1. Create a new component at components/SpotifyMiniPlayer.tsx. This is a floating draggable card that renders on top of the app (fixed position, high z-index).",
+    "2. Implement drag behavior using framer-motion's drag prop or @dnd-kit. The card should be freely draggable anywhere on screen. Track position in state.",
+    "3. Implement right-edge snap: When the card is dragged within ~40px of the right viewport edge, it should 'snap' and collapse into a small circular button/icon stuck to the right side. Animate the transition smoothly.",
+    "4. When in snapped/collapsed state: Show a small Spotify icon button stuck to the right edge. When clicked, expand back into the full mini player card at a reasonable position.",
+    "5. The mini player card content: Use a Spotify Web Embed iframe (https://open.spotify.com/embed/playlist/...) with a default lo-fi/focus playlist. The iframe should be sized small (e.g., 300x80 for compact mode or 300x152 for standard). Show track info via the embed.",
+    "6. Add basic controls around the iframe: The Spotify embed already has play/pause/skip built in. Add a close/minimize button on the card, and a drag handle indicator.",
+    "7. Persist the player state (open/closed, snapped/expanded, position) in localStorage so it survives page refresh.",
+    "8. Add a Spotify section in app/dashboard/settings/page.tsx under Integrations: A 'Spotify' row showing connection status. For now, just a 'Connect Spotify' button that sets a localStorage flag (actual OAuth comes later). When 'connected', show the mini player globally.",
+    "9. Mount the SpotifyMiniPlayer in app/dashboard/layout.tsx so it appears across all dashboard pages.",
+    "10. Style with matte design: The card should have a subtle border, flat fill (no glass), rounded corners, and be visually lightweight."
+  ],
+  "acceptance_criteria": [
+    "npm run build passes without errors",
+    "npm run lint passes",
+    "A floating mini player card is visible on the dashboard",
+    "The card can be freely dragged around the screen",
+    "When dragged to the right edge, it snaps into a small button stuck to the right side",
+    "Clicking the snapped button expands back to the full card",
+    "The card contains a Spotify embed iframe showing a playlist",
+    "Settings page has a Spotify integration section",
+    "Player state persists in localStorage"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint"
+  ],
+  "blocked_reason": null,
+  "findings": "Build and lint pass cleanly. Used framer-motion drag with useAnimationControls and useMotionValue for position tracking. Snapped state uses a separate fixed-position button element. localStorage used for both connection state and player state persistence. Dispatched custom StorageEvent from settings page for cross-component reactivity."
+}

@@ -4,11 +4,20 @@ Each repository operates on a specific collection and uses async
 Firestore operations via the get_db() client.
 """
 
+import uuid
 from datetime import datetime
 from typing import Optional
 
 from app.db.firestore import get_db
-from app.db.models import User, Task, Habit, Conversation
+from app.db.models import (
+    User,
+    Task,
+    Habit,
+    Conversation,
+    UserMemory,
+    Notification,
+    ProactiveState,
+)
 
 
 class UserRepository:
@@ -109,6 +118,81 @@ class UserRepository:
             tokens: New token dictionary.
         """
         await cls.update(user_id, {"google_tokens": tokens})
+
+    @classmethod
+    async def record_engagement(cls, user_id: str, today: str) -> dict:
+        """Record a daily engagement and update the user's streak.
+
+        Streak rules:
+        - First ever engagement -> streak becomes 1.
+        - Engaging on the same day again -> no change (idempotent).
+        - Engaging the day after the last active date -> streak + 1.
+        - Engaging after a gap of more than one day -> streak resets to 1.
+
+        Args:
+            user_id: The Firestore document ID.
+            today: Today's date as an ISO string (YYYY-MM-DD), caller-provided
+                so the timezone policy stays consistent across the app.
+
+        Returns:
+            Dict with the updated 'streak', 'longest_streak', 'last_active_date',
+            and whether this call 'incremented' the streak.
+        """
+        from datetime import date, timedelta
+
+        user = await cls.get_by_id(user_id)
+        if not user:
+            return {
+                "streak": 0,
+                "longest_streak": 0,
+                "last_active_date": "",
+                "incremented": False,
+            }
+
+        last_active = user.last_active_date or ""
+        current_streak = user.streak or 0
+        longest = user.longest_streak or 0
+
+        if last_active == today:
+            # Already counted today; return current values unchanged.
+            return {
+                "streak": current_streak,
+                "longest_streak": max(longest, current_streak),
+                "last_active_date": last_active,
+                "incremented": False,
+            }
+
+        # Determine whether the last engagement was exactly yesterday.
+        new_streak = 1
+        if last_active:
+            try:
+                last_date = date.fromisoformat(last_active)
+                today_date = date.fromisoformat(today)
+                if today_date - last_date == timedelta(days=1):
+                    new_streak = current_streak + 1
+                elif today_date <= last_date:
+                    # Clock skew / out-of-order: keep the existing streak.
+                    new_streak = max(current_streak, 1)
+                else:
+                    new_streak = 1
+            except ValueError:
+                new_streak = 1
+
+        new_longest = max(longest, new_streak)
+        await cls.update(
+            user_id,
+            {
+                "streak": new_streak,
+                "longest_streak": new_longest,
+                "last_active_date": today,
+            },
+        )
+        return {
+            "streak": new_streak,
+            "longest_streak": new_longest,
+            "last_active_date": today,
+            "incremented": True,
+        }
 
 
 class TaskRepository:
@@ -430,3 +514,337 @@ class ConversationRepository:
             await db.collection(cls.COLLECTION).document(conversation_id).update(
                 {"messages": messages}
             )
+
+
+
+class MemoryRepository:
+    """Repository for per-user UserMemory documents in 'user_memory'.
+
+    The document ID is the user's ID, so a user has exactly one memory record.
+    All reads degrade gracefully: a missing document yields a fresh, empty
+    UserMemory rather than raising, so agents can always rely on getting a
+    usable object back.
+    """
+
+    COLLECTION = "user_memory"
+    # Cap raw observations so the document stays small and cheap to read on
+    # every prompt. Oldest observations are dropped first.
+    MAX_OBSERVATIONS = 500
+
+    @classmethod
+    async def get_memory(cls, user_id: str) -> UserMemory:
+        """Get the user's memory document, or a fresh empty one if absent.
+
+        Args:
+            user_id: The Firestore document ID (the user's ID).
+
+        Returns:
+            A UserMemory instance (never None). On any read error, returns an
+            empty UserMemory so callers degrade gracefully.
+        """
+        if not user_id:
+            return UserMemory()
+        try:
+            db = get_db()
+            doc = await db.collection(cls.COLLECTION).document(user_id).get()
+            if doc.exists:
+                data = doc.to_dict() or {}
+                data["user_id"] = user_id
+                return UserMemory(**data)
+        except Exception:
+            # Memory must never break the main flow — fall through to empty.
+            pass
+        return UserMemory(user_id=user_id)
+
+    @classmethod
+    async def save_memory(cls, memory: UserMemory) -> None:
+        """Persist a full UserMemory document (overwrites existing).
+
+        Args:
+            memory: The UserMemory instance to store. Its ``user_id`` is used
+                as the document ID.
+        """
+        if not memory.user_id:
+            return
+        memory.updated_at = datetime.utcnow()
+        db = get_db()
+        data = memory.model_dump(exclude={"user_id"})
+        await db.collection(cls.COLLECTION).document(memory.user_id).set(data)
+
+    @classmethod
+    async def update_memory(cls, user_id: str, partial: dict) -> UserMemory:
+        """Merge a partial update into the user's memory and persist it.
+
+        Args:
+            user_id: The user's ID.
+            partial: Dict of UserMemory fields to overwrite.
+
+        Returns:
+            The updated UserMemory instance.
+        """
+        memory = await cls.get_memory(user_id)
+        merged = memory.model_dump()
+        merged.update(partial)
+        merged["user_id"] = user_id
+        updated = UserMemory(**merged)
+        await cls.save_memory(updated)
+        return updated
+
+    @classmethod
+    async def record_observation(
+        cls, user_id: str, observation: dict
+    ) -> UserMemory:
+        """Append a raw behavioural observation, capping the stored history.
+
+        This only persists the raw signal; statistical distillation is handled
+        by the memory agent so the write stays cheap.
+
+        Args:
+            user_id: The user's ID.
+            observation: A JSON-serializable dict describing the signal, e.g.
+                ``{"type": "task_completed", "hour": 10, "title": "..."}``.
+
+        Returns:
+            The updated UserMemory instance.
+        """
+        memory = await cls.get_memory(user_id)
+        observations = list(memory.observations or [])
+        observations.append(observation)
+        # Keep only the most recent MAX_OBSERVATIONS entries.
+        if len(observations) > cls.MAX_OBSERVATIONS:
+            observations = observations[-cls.MAX_OBSERVATIONS :]
+        memory.observations = observations
+        await cls.save_memory(memory)
+        return memory
+
+    @classmethod
+    async def clear_memory(cls, user_id: str) -> None:
+        """Delete the user's memory document entirely ('forget everything').
+
+        Args:
+            user_id: The user's ID.
+        """
+        if not user_id:
+            return
+        db = get_db()
+        await db.collection(cls.COLLECTION).document(user_id).delete()
+
+
+
+class NotificationRepository:
+    """Repository for Notification documents in the 'notifications' collection.
+
+    Backs the notification inbox. Notifications are persisted per user and
+    queried most-recent-first. The collection is capped per user (oldest are
+    pruned) so the inbox stays cheap to read and never grows unbounded.
+    """
+
+    COLLECTION = "notifications"
+    # Keep at most this many notifications per user; older ones are pruned.
+    MAX_PER_USER = 200
+
+    @classmethod
+    async def create(cls, notification: Notification) -> Notification:
+        """Create a notification document, assigning an ID when absent.
+
+        Args:
+            notification: The Notification to persist. ``user_id`` is required.
+
+        Returns:
+            The stored Notification with its ``id`` populated.
+        """
+        db = get_db()
+        if not notification.id:
+            notification.id = uuid.uuid4().hex
+        data = notification.model_dump(exclude={"id"})
+        await db.collection(cls.COLLECTION).document(notification.id).set(data)
+        return notification
+
+    @classmethod
+    async def list_by_user(
+        cls, user_id: str, limit: int = 50
+    ) -> list[Notification]:
+        """List a user's notifications, most recent first.
+
+        Sorting is done in memory to avoid requiring a composite Firestore
+        index (user_id + created_at), keeping deployment friction low.
+
+        Args:
+            user_id: The user's ID.
+            limit: Maximum number of notifications to return.
+
+        Returns:
+            A list of Notification instances ordered newest-first.
+        """
+        if not user_id:
+            return []
+        db = get_db()
+        query = db.collection(cls.COLLECTION).where("user_id", "==", user_id)
+        notifications: list[Notification] = []
+        async for doc in query.stream():
+            data = doc.to_dict()
+            data["id"] = doc.id
+            notifications.append(Notification(**data))
+        notifications.sort(key=lambda n: n.created_at, reverse=True)
+        return notifications[:limit]
+
+    @classmethod
+    async def unread_count(cls, user_id: str) -> int:
+        """Return how many of the user's notifications are unread."""
+        notifications = await cls.list_by_user(user_id, limit=cls.MAX_PER_USER)
+        return sum(1 for n in notifications if not n.read)
+
+    @classmethod
+    async def mark_read(cls, user_id: str, notification_id: str) -> bool:
+        """Mark a single notification read, scoped to its owner.
+
+        Args:
+            user_id: The requesting user's ID (ownership check).
+            notification_id: The notification document ID.
+
+        Returns:
+            True if the notification existed, belonged to the user and was
+            updated; False otherwise.
+        """
+        db = get_db()
+        ref = db.collection(cls.COLLECTION).document(notification_id)
+        doc = await ref.get()
+        if not doc.exists:
+            return False
+        data = doc.to_dict() or {}
+        if data.get("user_id") != user_id:
+            return False
+        await ref.update({"read": True})
+        return True
+
+    @classmethod
+    async def mark_all_read(cls, user_id: str) -> int:
+        """Mark every unread notification for a user as read.
+
+        Returns:
+            The number of notifications updated.
+        """
+        if not user_id:
+            return 0
+        db = get_db()
+        query = db.collection(cls.COLLECTION).where("user_id", "==", user_id)
+        updated = 0
+        async for doc in query.stream():
+            data = doc.to_dict() or {}
+            if not data.get("read"):
+                await doc.reference.update({"read": True})
+                updated += 1
+        return updated
+
+    @classmethod
+    async def delete(cls, user_id: str, notification_id: str) -> bool:
+        """Delete a single notification, scoped to its owner.
+
+        Returns:
+            True if a notification owned by the user was deleted.
+        """
+        db = get_db()
+        ref = db.collection(cls.COLLECTION).document(notification_id)
+        doc = await ref.get()
+        if not doc.exists:
+            return False
+        data = doc.to_dict() or {}
+        if data.get("user_id") != user_id:
+            return False
+        await ref.delete()
+        return True
+
+    @classmethod
+    async def clear_all(cls, user_id: str) -> int:
+        """Delete all notifications for a user ('clear all').
+
+        Returns:
+            The number of notifications deleted.
+        """
+        if not user_id:
+            return 0
+        db = get_db()
+        query = db.collection(cls.COLLECTION).where("user_id", "==", user_id)
+        deleted = 0
+        async for doc in query.stream():
+            await doc.reference.delete()
+            deleted += 1
+        return deleted
+
+    @classmethod
+    async def prune(cls, user_id: str) -> None:
+        """Trim a user's notifications down to ``MAX_PER_USER`` (newest kept)."""
+        if not user_id:
+            return
+        notifications = await cls.list_by_user(user_id, limit=10_000)
+        if len(notifications) <= cls.MAX_PER_USER:
+            return
+        db = get_db()
+        for stale in notifications[cls.MAX_PER_USER :]:
+            try:
+                await db.collection(cls.COLLECTION).document(stale.id).delete()
+            except Exception:
+                pass
+
+
+class ProactiveStateRepository:
+    """Repository for per-user ProactiveState in the 'proactive_state' collection.
+
+    The document ID is the user's ID. Reads degrade gracefully: a missing
+    document (or any error) yields a fresh ProactiveState so the proactive
+    engine never breaks the main flow.
+    """
+
+    COLLECTION = "proactive_state"
+
+    @classmethod
+    async def get(cls, user_id: str) -> ProactiveState:
+        """Get the user's proactive state, or a fresh one if absent."""
+        if not user_id:
+            return ProactiveState()
+        try:
+            db = get_db()
+            doc = await db.collection(cls.COLLECTION).document(user_id).get()
+            if doc.exists:
+                data = doc.to_dict() or {}
+                data["user_id"] = user_id
+                return ProactiveState(**data)
+        except Exception:
+            pass
+        return ProactiveState(user_id=user_id)
+
+    @classmethod
+    async def save(cls, state: ProactiveState) -> None:
+        """Persist the full ProactiveState document (overwrites existing)."""
+        if not state.user_id:
+            return
+        state.updated_at = datetime.utcnow()
+        db = get_db()
+        data = state.model_dump(exclude={"user_id"})
+        await db.collection(cls.COLLECTION).document(state.user_id).set(data)
+
+    @classmethod
+    async def set_focus_active(cls, user_id: str, active: bool) -> None:
+        """Record whether the user is currently in a focus session."""
+        state = await cls.get(user_id)
+        state.focus_active = active
+        await cls.save(state)
+
+    @classmethod
+    async def record_feedback(cls, user_id: str, accepted: bool) -> ProactiveState:
+        """Update calibration counters when a nudge is accepted or dismissed.
+
+        Args:
+            user_id: The user's ID.
+            accepted: True if the user acted on the nudge, False if dismissed.
+
+        Returns:
+            The updated ProactiveState.
+        """
+        state = await cls.get(user_id)
+        if accepted:
+            state.accepted += 1
+        else:
+            state.dismissed += 1
+        await cls.save(state)
+        return state

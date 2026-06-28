@@ -11,40 +11,148 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Deep space base palette
-        base: {
-          DEFAULT: "#06080F",
-          950: "#06080F",
-          900: "#090C15",
-          850: "#0B0E19",
-          800: "#0D1119",
-          700: "#11161F",
-          600: "#161C28",
+        // Notion-inspired warm neutrals
+        gray: {
+          50: "#fafafa",
+          100: "#f4f4f5",
+          150: "#efefef",
+          200: "#e4e4e7",
+          300: "#d4d4d8",
+          400: "#a1a1aa",
+          500: "#71717a",
+          600: "#52525b",
+          700: "#3f3f46",
+          750: "#2e2e33",
+          800: "#27272a",
+          850: "#232326",
+          900: "#18181b",
+          950: "#0f0f10",
         },
-        // Signature accent gradient stops
+        // Primary accent: indigo/violet spectrum
         accent: {
-          magenta: "#FF2DAF",
-          magenta2: "#E11D8F",
-          cyan: "#22D3EE",
-          cyan2: "#00E5FF",
+          DEFAULT: "#6366f1",
+          50: "#eef2ff",
+          100: "#e0e7ff",
+          200: "#c7d2fe",
+          300: "#a5b4fc",
+          400: "#818cf8",
+          500: "#6366f1",
+          600: "#4f46e5",
+          700: "#4338ca",
+          800: "#3730a3",
+          900: "#312e81",
+          950: "#1e1b4b",
         },
-        // Legacy neon tokens kept so any stray reference still resolves
+        // Warm cozy spectrum — peach / amber / ember for the "digital living room"
+        warm: {
+          50: "#fdf6f0",
+          100: "#fae9da",
+          200: "#f3d2b6",
+          300: "#ecb98e",
+          400: "#e8a87c",
+          500: "#dd8a5a",
+          600: "#c96f3e",
+          700: "#a8572f",
+          800: "#854629",
+          900: "#6b3a25",
+        },
+        // Soft mauve/clay accents for gentle depth in the cozy scene
+        clay: {
+          200: "#e7d3d8",
+          300: "#d4b3bf",
+          400: "#c89bd4",
+          500: "#b27fae",
+        },
+        // Semantic colors
+        success: {
+          DEFAULT: "#10b981",
+          50: "#ecfdf5",
+          100: "#d1fae5",
+          200: "#a7f3d0",
+          300: "#6ee7b7",
+          400: "#34d399",
+          500: "#10b981",
+          600: "#059669",
+          700: "#047857",
+        },
+        warning: {
+          DEFAULT: "#f59e0b",
+          50: "#fffbeb",
+          100: "#fef3c7",
+          200: "#fde68a",
+          300: "#fcd34d",
+          400: "#fbbf24",
+          500: "#f59e0b",
+          600: "#d97706",
+          700: "#b45309",
+        },
+        danger: {
+          DEFAULT: "#f43f5e",
+          50: "#fff1f2",
+          100: "#ffe4e6",
+          200: "#fecdd3",
+          300: "#fda4af",
+          400: "#fb7185",
+          500: "#f43f5e",
+          600: "#e11d48",
+          700: "#be123c",
+        },
+        // Legacy tokens for backward compatibility
+        base: {
+          DEFAULT: "#0f0f10",
+          950: "#0f0f10",
+          900: "#18181b",
+          850: "#232326",
+          800: "#27272a",
+          700: "#3f3f46",
+          600: "#52525b",
+        },
         neon: {
-          cyan: "#22D3EE",
-          purple: "#FF2DAF",
-          pink: "#FF2DAF",
-          blue: "#22D3EE",
+          cyan: "#22d3ee",
+          purple: "#6366f1",
+          pink: "#f43f5e",
+          blue: "#818cf8",
         },
         dark: {
-          900: "#06080F",
-          800: "#0D1119",
-          700: "#11161F",
-          600: "#161C28",
+          900: "#0f0f10",
+          800: "#18181b",
+          700: "#232326",
+          600: "#27272a",
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+        sans: [
+          "var(--font-sans)",
+          "Inter",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
+          "Helvetica",
+          '"Apple Color Emoji"',
+          "Arial",
+          "sans-serif",
+        ],
+        mono: [
+          "var(--font-mono)",
+          "JetBrains Mono",
+          "ui-monospace",
+          "SFMono-Regular",
+          '"SF Mono"',
+          "Menlo",
+          "Consolas",
+          '"Liberation Mono"',
+          "monospace",
+        ],
+      },
+      spacing: {
+        "4.5": "1.125rem",
+        "5.5": "1.375rem",
+        "13": "3.25rem",
+        "15": "3.75rem",
+        "18": "4.5rem",
+        "22": "5.5rem",
+        "26": "6.5rem",
+        "30": "7.5rem",
       },
       borderRadius: {
         "2.5xl": "1.25rem",
@@ -52,47 +160,125 @@ const config: Config = {
         "4xl": "2rem",
       },
       boxShadow: {
-        glow: "0 0 40px -8px rgba(255, 45, 175, 0.35)",
-        "glow-cyan": "0 0 40px -8px rgba(34, 211, 238, 0.35)",
-        panel: "0 24px 80px -24px rgba(0, 0, 0, 0.8)",
-        rim: "inset 0 1px 0 0 rgba(255,255,255,0.06)",
+        // Notion-style minimal shadows
+        xs: "0 1px 2px 0 rgba(0, 0, 0, 0.02)",
+        sm: "0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.02)",
+        md: "0 2px 4px -1px rgba(0, 0, 0, 0.04), 0 1px 3px -1px rgba(0, 0, 0, 0.02)",
+        lg: "0 4px 8px -2px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.02)",
+        xl: "0 8px 16px -4px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.02)",
+        "2xl": "0 16px 32px -8px rgba(0, 0, 0, 0.1)",
+        // Subtle accent glow (reduced)
+        glow: "0 0 12px -4px rgba(99, 102, 241, 0.12)",
+        "glow-sm": "0 0 6px -2px rgba(99, 102, 241, 0.1)",
+        "glow-lg": "0 0 20px -6px rgba(99, 102, 241, 0.15)",
+        "glow-accent": "0 0 12px -4px rgba(99, 102, 241, 0.15)",
+        // Surface shadows
+        panel:
+          "0 8px 24px -8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.02)",
+        rim: "inset 0 1px 0 0 rgba(255, 255, 255, 0.02)",
+        "inner-sm": "inset 0 1px 2px 0 rgba(0, 0, 0, 0.03)",
+        // Card hover shadow (subtle)
+        "card-hover":
+          "0 2px 8px -2px rgba(0, 0, 0, 0.06), 0 1px 3px -1px rgba(0, 0, 0, 0.03)",
       },
       backgroundImage: {
         "accent-gradient":
-          "linear-gradient(110deg, #FF2DAF 0%, #B83CD6 45%, #22D3EE 100%)",
+          "linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%)",
         "accent-soft":
-          "linear-gradient(110deg, rgba(255,45,175,0.85) 0%, rgba(34,211,238,0.85) 100%)",
+          "linear-gradient(135deg, rgba(99, 102, 241, 0.8) 0%, rgba(139, 92, 246, 0.8) 100%)",
+        "surface-gradient":
+          "linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%)",
       },
       animation: {
+        "fade-in": "fade-in 0.3s ease-out both",
+        "fade-in-up": "fade-in-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "slide-up": "slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "slide-down": "slide-down 0.3s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "slide-in-right":
+          "slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "scale-in": "scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both",
+        float: "float 6s ease-in-out infinite",
+        "float-slow": "float-slow 14s ease-in-out infinite",
+        breathe: "breathe 3s ease-in-out infinite",
+        "breathe-slow": "breathe-slow 9s ease-in-out infinite",
+        drift: "drift 26s ease-in-out infinite",
+        aurora: "aurora 24s ease-in-out infinite",
+        ember: "ember 4.5s ease-in-out infinite",
+        "glow-pulse": "glow-pulse 6s ease-in-out infinite",
+        shimmer: "shimmer 2s linear infinite",
+        "spin-slow": "spin 3s linear infinite",
         "message-in": "message-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "fade-in": "fade-in 0.6s ease-out both",
-        breathe: "breathe 3.2s ease-in-out infinite",
-        shimmer: "shimmer 2.6s linear infinite",
-        "shimmer-slow": "shimmer 4s linear infinite",
-        float: "float 8s ease-in-out infinite",
         "pulse-soft": "pulse-soft 2.4s ease-in-out infinite",
         "caret-blink": "caret-blink 1s steps(1) infinite",
+        "spin-in": "spin-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
       },
       keyframes: {
-        "message-in": {
-          "0%": { opacity: "0", transform: "translateY(10px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
-        },
         "fade-in": {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
         },
+        "fade-in-up": {
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "slide-up": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "slide-down": {
+          "0%": { opacity: "0", transform: "translateY(-8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "slide-in-right": {
+          "0%": { opacity: "0", transform: "translateX(8px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+        "float-slow": {
+          "0%, 100%": { transform: "translateY(0px) translateX(0px)" },
+          "50%": { transform: "translateY(-14px) translateX(6px)" },
+        },
         breathe: {
-          "0%, 100%": { transform: "scale(0.96)", opacity: "0.65" },
+          "0%, 100%": { transform: "scale(0.97)", opacity: "0.7" },
+          "50%": { transform: "scale(1.03)", opacity: "1" },
+        },
+        "breathe-slow": {
+          "0%, 100%": { transform: "scale(1)", opacity: "0.85" },
           "50%": { transform: "scale(1.04)", opacity: "1" },
+        },
+        drift: {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+          "33%": { transform: "translate(3%, -2.5%) scale(1.03)" },
+          "66%": { transform: "translate(-2.5%, 2%) scale(0.98)" },
+        },
+        aurora: {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)", opacity: "0.5" },
+          "50%": { transform: "translate(-3%, 2%) scale(1.06)", opacity: "0.8" },
+        },
+        ember: {
+          "0%, 100%": { transform: "scaleY(1) scaleX(1)", opacity: "0.85" },
+          "25%": { transform: "scaleY(1.08) scaleX(0.96)", opacity: "1" },
+          "50%": { transform: "scaleY(0.94) scaleX(1.04)", opacity: "0.9" },
+          "75%": { transform: "scaleY(1.05) scaleX(0.98)", opacity: "1" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { opacity: "0.4", transform: "scale(1)" },
+          "50%": { opacity: "0.75", transform: "scale(1.08)" },
         },
         shimmer: {
           "0%": { backgroundPosition: "200% 50%" },
           "100%": { backgroundPosition: "-200% 50%" },
         },
-        float: {
-          "0%, 100%": { transform: "translateY(0px)" },
-          "50%": { transform: "translateY(-12px)" },
+        "message-in": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
         },
         "pulse-soft": {
           "0%, 100%": { opacity: "0.5" },
@@ -102,6 +288,14 @@ const config: Config = {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0" },
         },
+        "spin-in": {
+          "0%": { opacity: "0", transform: "rotate(-90deg) scale(0.8)" },
+          "100%": { opacity: "1", transform: "rotate(0deg) scale(1)" },
+        },
+      },
+      transitionTimingFunction: {
+        spring: "cubic-bezier(0.22, 1, 0.36, 1)",
+        "spring-bounce": "cubic-bezier(0.34, 1.56, 0.64, 1)",
       },
     },
   },

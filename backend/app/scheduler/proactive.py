@@ -3,10 +3,12 @@
 Periodically checks all users' tasks for approaching deadlines and sends
 escalating notifications through the WebSocket connection manager.
 Falls back to email when the user is not connected via WebSocket.
+Also runs daily digest and weekly review email jobs.
 """
 
 import asyncio
 import base64
+import html as html_mod
 import logging
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
@@ -14,8 +16,10 @@ from email.mime.text import MIMEText
 from typing import Optional
 
 from app.config import settings
+from app.db.firestore import get_db
 from app.db.repositories import UserRepository, TaskRepository
 from app.scheduler.nudge_engine import classify_urgency, generate_nudge, _format_time_remaining
+from app.utils.email_notifications import send_task_reminder, send_daily_digest, send_weekly_review
 from app.ws_manager import ConnectionManager
 
 from google.oauth2.credentials import Credentials
@@ -23,12 +27,57 @@ from googleapiclient.discovery import build
 
 logger = logging.getLogger(__name__)
 
+# Firestore collection for scheduler state persistence
+_SCHEDULER_STATE_COLLECTION = "scheduler_state"
+_SCHEDULER_STATE_DOC = "timestamps"
+
+
+async def _get_last_run(field: str) -> Optional[datetime]:
+    """Get a last-run timestamp from Firestore scheduler state.
+
+    Args:
+        field: The field name (e.g. 'last_daily_digest', 'last_weekly_review').
+
+    Returns:
+        The datetime value or None if not set.
+    """
+    try:
+        db = get_db()
+        doc = await db.collection(_SCHEDULER_STATE_COLLECTION).document(_SCHEDULER_STATE_DOC).get()
+        if doc.exists:
+            data = doc.to_dict()
+            val = data.get(field)
+            if val is not None:
+                if isinstance(val, datetime):
+                    if val.tzinfo is None:
+                        return val.replace(tzinfo=timezone.utc)
+                    return val
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to read scheduler state for '{field}': {e}")
+        return None
+
+
+async def _set_last_run(field: str, value: datetime) -> None:
+    """Persist a last-run timestamp to Firestore scheduler state.
+
+    Args:
+        field: The field name to update.
+        value: The datetime value to persist.
+    """
+    try:
+        db = get_db()
+        doc_ref = db.collection(_SCHEDULER_STATE_COLLECTION).document(_SCHEDULER_STATE_DOC)
+        await doc_ref.set({field: value}, merge=True)
+    except Exception as e:
+        logger.warning(f"Failed to persist scheduler state for '{field}': {e}")
+
 
 async def _send_nudge_email(user_email: str, nudge_message: str, task_title: str, google_tokens: dict) -> bool:
     """Send a nudge email to the user via Gmail API.
 
     Uses the user's stored refresh token to obtain fresh credentials and
-    sends an HTML email with ChronAI branding.
+    sends an HTML email with Haven branding.
 
     Args:
         user_email: The user's email address.
@@ -57,7 +106,8 @@ async def _send_nudge_email(user_email: str, nudge_message: str, task_title: str
 
         service = build("gmail", "v1", credentials=credentials)
 
-        # Build HTML email with ChronAI branding
+        # Build HTML email with Haven branding
+        safe_nudge = html_mod.escape(nudge_message)
         html_body = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -76,14 +126,14 @@ async def _send_nudge_email(user_email: str, nudge_message: str, task_title: str
 <body>
   <div class="container">
     <div class="card">
-      <div class="logo">ChronAI</div>
+      <div class="logo">Haven</div>
       <div class="message">
-        <p>{nudge_message}</p>
+        <p>{safe_nudge}</p>
       </div>
-      <a href="{settings.FRONTEND_ORIGIN}" class="btn">Open ChronAI</a>
+      <a href="{settings.FRONTEND_ORIGIN}" class="btn">Open Haven</a>
     </div>
     <div class="footer">
-      <p>You received this because you have email notifications enabled in ChronAI.</p>
+      <p>You received this because you have email notifications enabled in Haven.</p>
     </div>
   </div>
 </body>
@@ -91,7 +141,7 @@ async def _send_nudge_email(user_email: str, nudge_message: str, task_title: str
 
         msg = MIMEMultipart("alternative")
         msg["to"] = user_email
-        msg["subject"] = f"ChronAI Reminder: {task_title}"
+        msg["subject"] = f"Haven Reminder: {task_title}"
         msg.attach(MIMEText(nudge_message, "plain"))
         msg.attach(MIMEText(html_body, "html"))
 
@@ -182,6 +232,7 @@ async def _check_user_deadlines(
 
         # If user is NOT connected via WebSocket, try sending email
         email_sent = False
+        user = None
         if not manager.is_connected(user_id):
             try:
                 user = await UserRepository.get_by_id(user_id)
@@ -201,6 +252,26 @@ async def _check_user_deadlines(
                         )
             except Exception as e:
                 logger.error(f"Error sending email fallback for user {user_id}: {e}")
+
+        # 4-hour deadline email reminder: send a dedicated reminder email
+        # when the task deadline is between 3.5 and 4.5 hours away
+        # (to handle scheduler interval timing) regardless of connection status
+        if timedelta(hours=3, minutes=30) <= remaining <= timedelta(hours=4, minutes=30):
+            try:
+                if user is None:
+                    user = await UserRepository.get_by_id(user_id)
+                if user and user.email and user.google_tokens:
+                    prefs = user.notification_preferences
+                    if prefs.get("email_deadline_reminders", True):
+                        deadline_str = deadline.strftime("%I:%M %p UTC")
+                        await send_task_reminder(
+                            user.email, task.title, deadline_str, user.google_tokens
+                        )
+                        logger.info(
+                            f"4-hour deadline reminder sent to {user.email} for '{task.title}'"
+                        )
+            except Exception as e:
+                logger.error(f"Error sending 4-hour deadline email for user {user_id}: {e}")
 
         nudges_sent.append({
             "user_id": user_id,
@@ -251,6 +322,166 @@ async def run_nudge_check(manager: ConnectionManager, user_id: Optional[str] = N
     return all_nudges
 
 
+async def _run_proactive_pass(manager: ConnectionManager) -> None:
+    """Run the Sprint 12 proactive intelligence pass for all users.
+
+    For each user, the intelligence engine computes interventions and the
+    governance layer decides what (if anything) to surface. Anything delivered
+    is persisted to the notification inbox and pushed over WebSocket. Genuinely
+    time-sensitive Tier 3 nudges fall back to email when the user is offline.
+
+    The engine relies on real tasks/calendar via MCP, which needs the user's
+    OAuth token; for background runs we use the stored access token.
+    """
+    from app.scheduler.proactive_delivery import deliver_interventions
+
+    # Late import keeps the global mcp_client lookup out of module import time.
+    try:
+        from app.main import mcp_client
+    except Exception:
+        mcp_client = None
+
+    try:
+        users = await UserRepository.list_all()
+    except Exception:
+        logger.error("Failed to fetch users for proactive pass")
+        return
+
+    for user in users:
+        if not user.id:
+            continue
+        auth_token = (user.google_tokens or {}).get("access_token", "")
+        if not auth_token:
+            # Without a valid token we can't read the user's real schedule.
+            continue
+        try:
+            delivered = await deliver_interventions(
+                user.id,
+                auth_token,
+                mcp_client,
+                manager=manager,
+                push=True,
+            )
+        except Exception as e:
+            logger.warning(f"Proactive pass failed for user {user.id}: {e}")
+            continue
+
+        # Tier 3 (active, rare) interventions reach an offline user via email.
+        if delivered and not manager.is_connected(user.id):
+            if user.email and user.google_tokens:
+                for iv in delivered:
+                    if iv.get("tier", 2) >= 3:
+                        try:
+                            await _send_nudge_email(
+                                user.email,
+                                iv.get("message", ""),
+                                iv.get("title", "Haven"),
+                                user.google_tokens,
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"Failed to email Tier 3 nudge to {user.email}: {e}"
+                            )
+
+
+async def _run_daily_digest() -> None:
+    """Run the daily digest email job.
+
+    Checks if roughly 24 hours have passed since the last run (persisted in Firestore).
+    If so, iterates all users with 'daily_digest' enabled in their notification_preferences,
+    fetches their pending tasks, and sends a daily digest email.
+    """
+    now = datetime.now(timezone.utc)
+
+    # Only run once per 24 hours - check Firestore for last run
+    last_run = await _get_last_run("last_daily_digest")
+    if last_run is not None:
+        elapsed = now - last_run
+        if elapsed < timedelta(hours=23):
+            return
+
+    await _set_last_run("last_daily_digest", now)
+    logger.info("Running daily digest job")
+
+    try:
+        users = await UserRepository.list_all()
+    except Exception:
+        logger.error("Failed to fetch users for daily digest")
+        return
+
+    for user in users:
+        if not user.id or not user.email or not user.google_tokens:
+            continue
+
+        prefs = user.notification_preferences
+        if not prefs.get("daily_digest", False):
+            continue
+
+        try:
+            # Fetch user tasks
+            tasks = await TaskRepository.list_by_user(user.id)
+            pending_tasks = [
+                {"title": t.title, "due": t.deadline.strftime("%b %d") if t.deadline else ""}
+                for t in tasks
+                if t.status not in ("completed", "done")
+            ]
+
+            # Events: try to fetch via calendar but skip if unavailable
+            events: list[dict] = []
+
+            await send_daily_digest(
+                user.email, pending_tasks, events, user.google_tokens
+            )
+        except Exception as e:
+            logger.error(f"Error sending daily digest for user {user.id}: {e}")
+
+
+async def _run_weekly_review() -> None:
+    """Run the weekly review email job.
+
+    Checks if roughly 7 days have passed since the last run (persisted in Firestore).
+    If so, iterates all users with 'weekly_review' enabled in their notification_preferences,
+    generates a weekly review via the ReviewAgent, and sends the email.
+    """
+    now = datetime.now(timezone.utc)
+
+    # Only run once per 7 days - check Firestore for last run
+    last_run = await _get_last_run("last_weekly_review")
+    if last_run is not None:
+        elapsed = now - last_run
+        if elapsed < timedelta(days=6, hours=20):
+            return
+
+    await _set_last_run("last_weekly_review", now)
+    logger.info("Running weekly review job")
+
+    try:
+        users = await UserRepository.list_all()
+    except Exception:
+        logger.error("Failed to fetch users for weekly review")
+        return
+
+    for user in users:
+        if not user.id or not user.email or not user.google_tokens:
+            continue
+
+        prefs = user.notification_preferences
+        if not prefs.get("weekly_review", False):
+            continue
+
+        try:
+            from app.agents.review import generate_weekly_review as gen_review
+
+            auth_token = user.google_tokens.get("access_token", "")
+            review_content = await gen_review(user.id, auth_token, mcp_client=None)
+
+            await send_weekly_review(
+                user.email, review_content, user.google_tokens
+            )
+        except Exception as e:
+            logger.error(f"Error sending weekly review for user {user.id}: {e}")
+
+
 async def _scheduler_loop(manager: ConnectionManager) -> None:
     """Main scheduler loop that runs periodically.
 
@@ -267,6 +498,23 @@ async def _scheduler_loop(manager: ConnectionManager) -> None:
             await run_nudge_check(manager)
         except Exception:
             logger.exception("Error during proactive nudge check")
+
+        # Sprint 12: run the proactive intelligence pass (the "perfect nudge").
+        try:
+            await _run_proactive_pass(manager)
+        except Exception:
+            logger.exception("Error during proactive intelligence pass")
+
+        # Run daily digest and weekly review jobs
+        try:
+            await _run_daily_digest()
+        except Exception:
+            logger.exception("Error during daily digest job")
+
+        try:
+            await _run_weekly_review()
+        except Exception:
+            logger.exception("Error during weekly review job")
 
         await asyncio.sleep(interval_seconds)
 

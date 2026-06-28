@@ -1,0 +1,29 @@
+{
+  "project_type": "Next.js 15 App Router with TypeScript, framer-motion animations",
+  "language": "TypeScript/React",
+  "build_system": "pnpm + next build",
+  "test_framework": "jest with @testing-library/react, tests in __tests__/ dir",
+  "build_command": "cd /projects/sandbox/ChronAI/frontend && npm run build",
+  "test_command": "cd /projects/sandbox/ChronAI/frontend && npm run lint",
+  "verification_instructions": "Run npm run build and npm run lint in frontend directory. Both must pass with zero errors.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "cd /projects/sandbox/ChronAI/frontend && pnpm install (already done, node_modules present)",
+  "environment_constraints": "Open internet. node_modules already installed. No Docker needed for frontend-only changes.",
+  "contribution_requirements": "Follow existing matte dark theme (--bg, --surface, --border CSS vars). No glowy gradients on new UI. accent-500 indigo for accent color. DO NOT MODIFY: hooks/useChatSocket.ts, lib/api.ts, lib/ws.ts, lib/voice.ts, middleware.ts, Providers.tsx, components/entity/, shared/",
+  "key_patterns": "Components use framer-motion for animations, lucide-react for icons, CSS variables for theming (--bg=#0f0f10, --surface=#18181b, --border, --text-primary/secondary/tertiary). Tailwind utility classes with custom config. State persisted in localStorage. Dashboard layout renders a persistent AI FAB button + AIChatPanel. TopBar is in AppShell. VoiceMode is rendered inside ChatExperience.",
+  "relevant_files": [
+    "frontend/components/SpotifyMiniPlayer.tsx",
+    "frontend/app/dashboard/layout.tsx",
+    "frontend/components/chat/AIChatPanel.tsx",
+    "frontend/components/chat/ChatExperience.tsx",
+    "frontend/components/voice/VoiceMode.tsx",
+    "frontend/components/ai/AIToast.tsx",
+    "frontend/app/dashboard/page.tsx",
+    "frontend/components/layout/TopBar.tsx",
+    "frontend/components/layout/AppShell.tsx",
+    "frontend/app/dashboard/settings/page.tsx",
+    "frontend/lib/api-extended.ts",
+    "frontend/tailwind.config.ts"
+  ],
+  "directory_structure": "frontend/app/ (Next.js App Router pages), frontend/components/ (shared components organized by domain: chat/, voice/, ai/, layout/, ui/), frontend/lib/ (API helpers, utilities), frontend/hooks/ (custom hooks like useChatSocket)"
+}

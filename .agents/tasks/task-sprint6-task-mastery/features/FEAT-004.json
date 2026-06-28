@@ -1,0 +1,38 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Auto-Pilot Mode - The AI showpiece feature with two modes: 'Ask Permission' (AI plans the day, shows plan, waits for approval) and 'Full Auto' (AI does everything automatically then tells user what it did). Includes backend endpoints and frontend UI.",
+  "status": "completed",
+  "steps": [
+    "STEP 1 - Backend: Create a new file backend/app/api/autopilot.py with a FastAPI APIRouter. Add two endpoints: POST /api/autopilot/plan (generates a day plan using scheduler+planner+priority agents but does NOT execute it) and POST /api/autopilot/execute (takes a plan and actually creates/moves events and tasks).",
+    "STEP 2 - Backend: The /api/autopilot/plan endpoint should: (a) authenticate with auth_token, (b) fetch current tasks via planner.list_tasks, (c) fetch today's calendar events via MCP list_events, (d) use PriorityAgent to rank tasks, (e) use Gemini to generate an optimized day plan that: blocks focus time, schedules tasks into free slots, adds buffers between meetings. Return the plan as JSON with structure: { plan_id: string, actions: [{ type: 'create_event'|'move_event'|'schedule_task', details: {...} }], summary: string }.",
+    "STEP 3 - Backend: The /api/autopilot/execute endpoint should: (a) authenticate, (b) accept a plan (list of actions), (c) execute each action by calling the appropriate MCP tools (create_event, update_event, etc.), (d) return a summary of what was done: { executed: number, failed: number, changes: [...] }.",
+    "STEP 4 - Backend: Register the autopilot router in backend/app/main.py with app.include_router(autopilot_router).",
+    "STEP 5 - Frontend API: Add functions in frontend/lib/api-extended.ts: fetchAutopilotPlan(authToken) and executeAutopilotPlan(authToken, planId, actions).",
+    "STEP 6 - Frontend: Create frontend/components/autopilot/AutoPilotPanel.tsx - A modal/panel component that: (a) Has a mode toggle at the top: 'Ask Permission' vs 'Full Auto', stored in localStorage key 'chronai-autopilot-mode'. (b) Shows a 'Plan My Day' button. (c) In 'Ask Permission' mode: clicking 'Plan My Day' calls fetchAutopilotPlan, shows the plan with accept/reject/adjust buttons. Each plan action shown as a card (create event at X, schedule task Y at Z, etc). User can toggle individual actions on/off. Accept calls executeAutopilotPlan with approved actions. (d) In 'Full Auto' mode: shows a WARNING modal first: 'This may change your current schedules in the calendar. Proceed?' On confirm, calls fetchAutopilotPlan then immediately executeAutopilotPlan. Shows a summary of all changes made.",
+    "STEP 7 - Frontend: Add the AutoPilot trigger to the dashboard home page (frontend/app/dashboard/page.tsx): Add a 'Plan My Day' button/card in the stats area or as a prominent action. Also add an Auto-Pilot mode toggle in the settings page (frontend/app/dashboard/settings/page.tsx) under AI Preferences section.",
+    "STEP 8 - Frontend: Style the AutoPilot panel with premium dark UI. Plan actions use colored icons: calendar events get CalendarIcon in accent-500, tasks get CheckSquare in warning-500, focus blocks get Timer in success-500. The warning for Full Auto mode uses a danger-500 AlertTriangle icon.",
+    "STEP 9 - Verify: Run frontend build + lint, and python3 -m py_compile on the backend files."
+  ],
+  "acceptance_criteria": [
+    "npm run build succeeds with no errors",
+    "npm run lint shows no errors",
+    "python3 -m py_compile backend/app/main.py succeeds",
+    "python3 -m py_compile backend/app/api/autopilot.py succeeds",
+    "POST /api/autopilot/plan endpoint exists and accepts auth_token",
+    "POST /api/autopilot/execute endpoint exists and accepts auth_token + actions",
+    "Frontend has AutoPilotPanel component with mode toggle",
+    "Ask Permission mode: shows plan, allows accept/reject/adjust",
+    "Full Auto mode: shows warning, then executes and shows summary",
+    "Plan My Day button exists on dashboard home page",
+    "Auto-Pilot mode toggle exists in settings"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint",
+    "python3 -m py_compile /projects/sandbox/ChronAI/backend/app/main.py",
+    "python3 -m py_compile /projects/sandbox/ChronAI/backend/app/api/autopilot.py"
+  ],
+  "blocked_reason": null,
+  "findings": "All verification passed. Backend autopilot.py compiles cleanly. Frontend build and lint pass with no errors. The AutoPilotPanel uses localStorage key 'chronai-autopilot-mode' for mode persistence shared between dashboard and settings."
+}

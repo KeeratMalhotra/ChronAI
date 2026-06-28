@@ -1,45 +1,47 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarDays,
   ListTodo,
   Flame,
-  MessageSquare,
   Sparkles,
   Timer,
   Search,
-  BarChart3,
+  LayoutDashboard,
+  Settings,
+  Sun,
+  Moon,
+  MessageSquare,
+  Plus,
 } from "lucide-react";
-import type { PanelKey } from "@/components/layout/SideDock";
+import { useTheme } from "@/components/ui/theme-provider";
 
 interface CommandPaletteProps {
-  onSendChat: (message: string) => void;
-  onOpenPanel: (key: PanelKey) => void;
-  onFocusMode: () => void;
+  onFocusMode?: () => void;
+  onOpenChat?: () => void;
 }
 
-interface QuickAction {
+interface CommandItem {
   id: string;
   label: string;
   icon: React.ReactNode;
   group: string;
   action: () => void;
+  keywords?: string;
 }
 
-/**
- * CommandPalette
- * Global Cmd+K / Ctrl+K command palette using cmdk.
- * Glass panel, dark, centered modal with keyboard navigation.
- */
 export default function CommandPalette({
-  onSendChat,
-  onOpenPanel,
   onFocusMode,
+  onOpenChat,
 }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const { theme, toggleTheme } = useTheme();
 
   // Keyboard shortcut: Cmd+K / Ctrl+K
   useEffect(() => {
@@ -54,101 +56,124 @@ export default function CommandPalette({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const actions: QuickAction[] = [
+  const navigate = (path: string) => {
+    if (pathname !== path) {
+      router.push(path);
+    }
+    setOpen(false);
+  };
+
+  const items: CommandItem[] = [
+    // Navigation
     {
-      id: "add-event",
-      label: "Add event...",
+      id: "go-dashboard",
+      label: "Go to Dashboard",
+      icon: <LayoutDashboard size={16} />,
+      group: "Navigation",
+      action: () => navigate("/dashboard"),
+      keywords: "home main overview",
+    },
+    {
+      id: "go-tasks",
+      label: "Go to Tasks",
+      icon: <ListTodo size={16} />,
+      group: "Navigation",
+      action: () => navigate("/dashboard/tasks"),
+      keywords: "todo list kanban",
+    },
+    {
+      id: "go-calendar",
+      label: "Go to Calendar",
+      icon: <CalendarDays size={16} />,
+      group: "Navigation",
+      action: () => navigate("/dashboard/calendar"),
+      keywords: "events schedule",
+    },
+    {
+      id: "go-habits",
+      label: "Go to Habits",
+      icon: <Flame size={16} />,
+      group: "Navigation",
+      action: () => navigate("/dashboard/habits"),
+      keywords: "streak routine",
+    },
+    {
+      id: "go-settings",
+      label: "Go to Settings",
+      icon: <Settings size={16} />,
+      group: "Navigation",
+      action: () => navigate("/dashboard/settings"),
+      keywords: "preferences config",
+    },
+    // Actions
+    {
+      id: "create-task",
+      label: "Create Task",
+      icon: <Plus size={16} />,
+      group: "Actions",
+      action: () => {
+        navigate("/dashboard/tasks");
+      },
+      keywords: "new add todo",
+    },
+    {
+      id: "create-event",
+      label: "Create Event",
       icon: <CalendarDays size={16} />,
       group: "Actions",
       action: () => {
-        onSendChat("Add event: ");
-        setOpen(false);
+        navigate("/dashboard/calendar");
       },
+      keywords: "new add schedule meeting",
     },
     {
-      id: "add-task",
-      label: "Add task...",
-      icon: <ListTodo size={16} />,
-      group: "Actions",
-      action: () => {
-        onSendChat("Add task: ");
-        setOpen(false);
-      },
-    },
-    {
-      id: "check-habit",
-      label: "Check in habit...",
-      icon: <Flame size={16} />,
-      group: "Actions",
-      action: () => {
-        onSendChat("Check in habit");
-        setOpen(false);
-      },
-    },
-    {
-      id: "whats-next",
-      label: "What's next?",
-      icon: <Sparkles size={16} />,
-      group: "Chat",
-      action: () => {
-        onSendChat("What's next?");
-        setOpen(false);
-      },
-    },
-    {
-      id: "weekly-review",
-      label: "Weekly review",
-      icon: <BarChart3 size={16} />,
-      group: "Chat",
-      action: () => {
-        onSendChat("Weekly review");
-        setOpen(false);
-      },
-    },
-    {
-      id: "focus-mode",
-      label: "Focus mode",
+      id: "start-focus",
+      label: "Start Focus Mode",
       icon: <Timer size={16} />,
-      group: "Mode",
+      group: "Actions",
       action: () => {
-        onFocusMode();
+        onFocusMode?.();
         setOpen(false);
       },
+      keywords: "pomodoro timer concentrate",
     },
     {
-      id: "open-calendar",
-      label: "Open Calendar",
-      icon: <CalendarDays size={16} />,
-      group: "Navigation",
+      id: "toggle-theme",
+      label: theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode",
+      icon: theme === "dark" ? <Sun size={16} /> : <Moon size={16} />,
+      group: "Actions",
       action: () => {
-        onOpenPanel("calendar");
+        toggleTheme();
         setOpen(false);
       },
+      keywords: "dark light appearance",
+    },
+    // AI
+    {
+      id: "ask-ai",
+      label: "Ask AI...",
+      icon: <Sparkles size={16} />,
+      group: "AI",
+      action: () => {
+        onOpenChat?.();
+        setOpen(false);
+      },
+      keywords: "chat assistant help",
     },
     {
-      id: "open-habits",
-      label: "Open Habits",
-      icon: <Flame size={16} />,
-      group: "Navigation",
+      id: "open-chat",
+      label: "Open AI Chat Panel",
+      icon: <MessageSquare size={16} />,
+      group: "AI",
       action: () => {
-        onOpenPanel("habits");
+        onOpenChat?.();
         setOpen(false);
       },
-    },
-    {
-      id: "open-tasks",
-      label: "Open Tasks",
-      icon: <ListTodo size={16} />,
-      group: "Navigation",
-      action: () => {
-        onOpenPanel("tasks");
-        setOpen(false);
-      },
+      keywords: "message conversation",
     },
   ];
 
-  // Group actions by category
-  const groups = Array.from(new Set(actions.map((a) => a.group)));
+  const groups = Array.from(new Set(items.map((a) => a.group)));
 
   return (
     <AnimatePresence>
@@ -169,25 +194,25 @@ export default function CommandPalette({
             initial={{ opacity: 0, scale: 0.96, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -10 }}
-            transition={{ duration: 0.15 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
             className="fixed inset-0 z-[91] flex items-start justify-center pt-[20vh]"
           >
             <Command
-              className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-base-950/90 shadow-2xl backdrop-blur-xl"
+              className="w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl"
               loop
             >
               {/* Search input */}
-              <div className="flex items-center gap-2 border-b border-white/10 px-4">
-                <Search size={16} className="text-white/40" />
+              <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] px-4">
+                <Search size={16} className="text-[var(--text-tertiary)]" />
                 <Command.Input
                   placeholder="Type a command or search..."
-                  className="h-12 w-full bg-transparent text-sm text-white placeholder:text-white/40 outline-none"
+                  className="h-12 w-full bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none"
                 />
               </div>
 
               {/* Results list */}
               <Command.List className="max-h-80 overflow-y-auto p-2">
-                <Command.Empty className="px-4 py-8 text-center text-sm text-white/40">
+                <Command.Empty className="px-4 py-8 text-center text-sm text-[var(--text-tertiary)]">
                   No results found.
                 </Command.Empty>
 
@@ -195,18 +220,18 @@ export default function CommandPalette({
                   <Command.Group
                     key={group}
                     heading={group}
-                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-white/30"
+                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-[var(--text-tertiary)]"
                   >
-                    {actions
+                    {items
                       .filter((a) => a.group === group)
                       .map((item) => (
                         <Command.Item
                           key={item.id}
-                          value={item.label}
+                          value={`${item.label} ${item.keywords || ""}`}
                           onSelect={item.action}
-                          className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/80 transition data-[selected=true]:bg-white/[0.07] data-[selected=true]:text-white"
+                          className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[var(--text-secondary)] transition data-[selected=true]:bg-[var(--surface-hover)] data-[selected=true]:text-[var(--text-primary)]"
                         >
-                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.05] text-white/60">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
                             {item.icon}
                           </span>
                           {item.label}
@@ -217,12 +242,12 @@ export default function CommandPalette({
               </Command.List>
 
               {/* Footer hint */}
-              <div className="flex items-center justify-between border-t border-white/10 px-4 py-2">
-                <span className="text-xs text-white/30">
+              <div className="flex items-center justify-between border-t border-[var(--border-subtle)] px-4 py-2">
+                <span className="text-xs text-[var(--text-tertiary)]">
                   Navigate with arrow keys
                 </span>
-                <span className="text-xs text-white/30">
-                  <kbd className="rounded bg-white/10 px-1.5 py-0.5 text-[10px]">
+                <span className="text-xs text-[var(--text-tertiary)]">
+                  <kbd className="rounded bg-[var(--bg-tertiary)] px-1.5 py-0.5 text-[10px]">
                     Esc
                   </kbd>{" "}
                   to close

@@ -1,0 +1,23 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Rebuild the landing page (app/page.tsx) and onboarding flow (app/onboarding/page.tsx) with a cinematic, premium experience. The landing page should feel like a high-end product showcase with fluid animations, while onboarding should be an immersive full-screen multi-step experience with animated transitions.",
+  "status": "completed",
+  "steps": [
+    "Rewrite app/page.tsx - Landing Page: Create a cinematic hero section with large heading, animated gradient text, floating ambient orbs, subtle grid pattern background. Feature a prominent Google sign-in button with hover glow effect. Add a features showcase section with 4 cards (AI Assistant, Smart Scheduling, Task Management, Habit Tracking) using staggered fade-in animations. Add a product preview/mockup section showing the dashboard. Include smooth scroll-triggered animations using framer-motion useInView. Add a minimal footer. The page must import signIn from next-auth/react for the login button. Keep the ambient background effects but make them more refined.",
+    "Rewrite app/onboarding/page.tsx - Onboarding Flow: Create a 4-step immersive onboarding with AnimatePresence page transitions. Step 1: Role selection (Professional, Student, Entrepreneur, Freelancer, Other) with animated cards and occupation input. Step 2: Schedule setup (work hours, wake/sleep times as selects, optional daily routine textarea). Step 3: Priorities picker (multi-select chips with check animation) and goals textarea. Step 4: Summary with confetti celebration and 'Start using ChronAI' button. Include animated progress indicator at top, navigation buttons at bottom. Must call postOnboarding from @/lib/api on completion and router.push to /dashboard. Keep useSession from next-auth/react for access token."
+  ],
+  "acceptance_criteria": [
+    "pnpm build passes without errors",
+    "Landing page has signIn('google') call for authentication",
+    "Onboarding calls postOnboarding and navigates to /dashboard on completion",
+    "Both pages use framer-motion for animations with spring physics",
+    "Pages use the CSS variable theming system (var(--bg), var(--text-primary) etc)",
+    "Responsive design works on mobile and desktop"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && pnpm build"
+  ],
+  "blocked_reason": null,
+  "findings": "Landing page and onboarding were already implemented in earlier commits (ca2be11, 4b19318). Verified all acceptance criteria are satisfied: cinematic hero with gradient text and floating orbs, Google sign-in button, 4 feature cards with stagger animation, trust badge, footer on landing page. Onboarding has 4-step AnimatePresence flow (role, schedule, priorities, summary), progress bar, confetti on submit, postOnboarding API call, and router.push to /dashboard. pnpm build passes cleanly."
+}

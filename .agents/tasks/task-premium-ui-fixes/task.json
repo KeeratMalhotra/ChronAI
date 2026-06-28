@@ -1,0 +1,14 @@
+{
+  "task_id": "task-premium-ui-fixes",
+  "task_description": "Implement 7 UI fixes/features for ChronAI premium frontend: Spotify widget fix (keep iframe mounted, semi-circle snap shape, play/pause toggle, full controls when expanded), AI chat button redesign (matte TopBar button replacing gradient FAB), voice mode inside chat panel (inline instead of full-screen), toast sound + visual improvements (Web Audio pop, spring bounce, left border accent), top navbar action button (replacing dashboard page FAB), profile picture upload (base64 localStorage), and cache integration status on settings.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build and npm run lint both pass with zero errors. All 7 features implemented and verified. Semantic review v1 identified 6 issues, all addressed in follow-up. Review v2 approved with no blocking issues."
+  }
+}

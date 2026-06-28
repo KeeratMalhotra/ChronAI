@@ -2,14 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   CSS Variable Theme System
+   Dark mode is the default (html has 'dark' class)
+   Inspired by Notion's clarity + Apple's premium feel
+   ============================================================ */
+
 :root {
-  --accent-magenta: #ff2daf;
-  --accent-magenta-2: #e11d8f;
-  --accent-cyan: #22d3ee;
-  --accent-cyan-2: #00e5ff;
-  --base: #06080f;
-  --panel: #0d1119;
+  /* Light mode — warm cream, cozy not clinical */
+  --bg: #fdfcfa;
+  --bg-secondary: #f8f6f1;
+  --bg-tertiary: #f2efe8;
+  --surface: #fffefb;
+  --surface-hover: #f5f2ea;
+  --surface-elevated: #fffefb;
+  --border: #e9e3d9;
+  --border-subtle: #f1ede4;
+  --border-focus: #6366f1;
+  --text-primary: #2b2722;
+  --text-secondary: #6b6359;
+  --text-tertiary: #9c9389;
+  --text-inverse: #fffefb;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-subtle: #eef0ff;
+  --accent-muted: rgba(99, 102, 241, 0.06);
+  --warm: #e8a87c;
+  --warm-glow: rgba(232, 168, 124, 0.12);
+  --shadow-color: 30 12% 35%;
+  --overlay: rgba(43, 39, 34, 0.35);
 }
+
+.dark {
+  /* Dark mode — warm tinted charcoal, calm and low-contrast */
+  --bg: #131211;
+  --bg-secondary: #1a1817;
+  --bg-tertiary: #232120;
+  --surface: #1a1817;
+  --surface-hover: #232120;
+  --surface-elevated: #1e1c1a;
+  --border: #2f2c29;
+  --border-subtle: #211f1d;
+  --border-focus: #818cf8;
+  --text-primary: #ece9e4;
+  --text-secondary: #a8a39c;
+  --text-tertiary: #847e76;
+  --text-inverse: #131211;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+  --accent-subtle: #1f1d2e;
+  --accent-muted: rgba(129, 140, 248, 0.06);
+  --warm: #e8a87c;
+  --warm-glow: rgba(232, 168, 124, 0.1);
+  --shadow-color: 24 30% 2%;
+  --overlay: rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
 
 html {
   color-scheme: dark;
@@ -21,14 +72,233 @@ body {
 }
 
 body {
-  background-color: var(--base);
-  color: #e7ecf3;
+  background-color: var(--bg);
+  color: var(--text-primary);
   overflow: hidden;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* ---------- Ambient background ---------- */
+/* Big headings: lighter weight + tighter tracking for a calm, premium feel */
+.text-display {
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+/* ============================================================
+   Matte Surfaces (subtle, not glassy)
+   ============================================================ */
+
+.glass {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-strong {
+  background: rgba(24, 24, 27, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+}
+
+:root .glass {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+:root .glass-strong {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+/* ============================================================
+   Gradient Text
+   ============================================================ */
+
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gradient-text-soft {
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.9) 0%,
+    rgba(139, 92, 246, 0.85) 50%,
+    rgba(167, 139, 250, 0.9) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gradient-text-warm {
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Cozy gradient — warm amber easing into a soft periwinkle accent */
+.gradient-text-cozy {
+  background: linear-gradient(120deg, #e8a87c 0%, #c89bd4 45%, #818cf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ============================================================
+   Grain / Noise Texture — adds warmth and tactility
+   ============================================================ */
+
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.grain-fixed {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='nf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23nf)'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   Scrollbar Styling
+   ============================================================ */
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+  transition: background 0.2s;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+.scroll-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* ============================================================
+   Focus Ring Utilities
+   ============================================================ */
+
+.focus-ring {
+  outline: none;
+}
+
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--border-focus);
+  border-radius: inherit;
+}
+
+/* ============================================================
+   Micro-interaction Utilities
+   ============================================================ */
+
+.hover-surface {
+  transition: background-color 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hover-surface:hover {
+  background-color: var(--surface-hover);
+}
+
+.press-scale {
+  transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.press-scale:active {
+  transform: scale(0.97);
+}
+
+.hover-glow {
+  transition: background-color 0.15s ease;
+}
+
+.hover-glow:hover {
+  background-color: var(--surface-hover);
+}
+
+.interactive {
+  transition: background-color 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.interactive:hover {
+  background-color: var(--surface-hover);
+}
+
+.interactive:active {
+  background-color: var(--bg-tertiary);
+}
+
+/* ============================================================
+   Thinking / Shimmer Effects
+   ============================================================ */
+
+.thinking-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0) 0%,
+    rgba(99, 102, 241, 0.8) 25%,
+    rgba(139, 92, 246, 0.8) 60%,
+    rgba(139, 92, 246, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.6s linear infinite;
+}
+
+.thinking-text {
+  background: linear-gradient(
+    90deg,
+    rgba(250, 250, 250, 0.35) 0%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(250, 250, 250, 0.35) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.8s linear infinite;
+}
+
+/* ============================================================
+   Ambient Background
+   ============================================================ */
+
 .ambient-canvas {
   position: fixed;
   inset: 0;
@@ -41,7 +311,7 @@ body {
   position: absolute;
   border-radius: 9999px;
   filter: blur(120px);
-  opacity: 0.5;
+  opacity: 0.25;
   will-change: transform;
 }
 
@@ -52,10 +322,10 @@ body {
   top: -16vh;
   background: radial-gradient(
     circle at center,
-    rgba(255, 45, 175, 0.5),
+    rgba(232, 168, 124, 0.28),
     transparent 65%
   );
-  animation: float 14s ease-in-out infinite;
+  animation: ambient-float 16s ease-in-out infinite;
 }
 
 .ambient-blob--cyan {
@@ -65,113 +335,27 @@ body {
   bottom: -18vh;
   background: radial-gradient(
     circle at center,
-    rgba(34, 211, 238, 0.42),
+    rgba(129, 140, 248, 0.22),
     transparent 65%
   );
-  animation: float 18s ease-in-out infinite reverse;
+  animation: ambient-float 20s ease-in-out infinite reverse;
 }
 
 .ambient-grid {
   position: absolute;
   inset: 0;
   background-image: radial-gradient(
-    rgba(255, 255, 255, 0.025) 1px,
+    rgba(255, 255, 255, 0.015) 1px,
     transparent 1px
   );
-  background-size: 40px 40px;
+  background-size: 48px 48px;
   mask-image: radial-gradient(circle at 50% 40%, black, transparent 80%);
 }
 
-/* ---------- Glass surfaces ---------- */
-.glass {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.045),
-    rgba(255, 255, 255, 0.015)
-  );
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
+/* ============================================================
+   Animations (keyframes)
+   ============================================================ */
 
-.glass-strong {
-  background: linear-gradient(
-    180deg,
-    rgba(13, 17, 25, 0.85),
-    rgba(9, 12, 21, 0.92)
-  );
-  backdrop-filter: blur(28px) saturate(140%);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-/* ---------- Gradient text ---------- */
-.gradient-text {
-  background: linear-gradient(110deg, #ff2daf 0%, #b552d6 45%, #22d3ee 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.gradient-text-soft {
-  background: linear-gradient(
-    110deg,
-    rgba(255, 45, 175, 0.92) 0%,
-    rgba(186, 120, 220, 0.85) 50%,
-    rgba(34, 211, 238, 0.92) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-/* ---------- Thinking shimmer ---------- */
-.thinking-shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 45, 175, 0) 0%,
-    rgba(255, 45, 175, 0.9) 25%,
-    rgba(34, 211, 238, 0.9) 60%,
-    rgba(34, 211, 238, 0) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2.6s linear infinite;
-}
-
-.thinking-text {
-  background: linear-gradient(
-    90deg,
-    rgba(231, 236, 243, 0.35) 0%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(231, 236, 243, 0.35) 100%
-  );
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: shimmer 2.8s linear infinite;
-}
-
-/* ---------- Scrollbar ---------- */
-.scroll-thin::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-.scroll-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scroll-thin::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 9999px;
-}
-
-.scroll-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* ---------- Animations ---------- */
 @keyframes message-in {
   0% {
     opacity: 0;
@@ -183,13 +367,26 @@ body {
   }
 }
 
+@keyframes ambient-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(1.5%, -2%) scale(1.01);
+  }
+  66% {
+    transform: translate(-1%, 1.5%) scale(0.99);
+  }
+}
+
 @keyframes float {
   0%,
   100% {
     transform: translate(0, 0) scale(1);
   }
   50% {
-    transform: translate(2%, -3%) scale(1.05);
+    transform: translate(2%, -3%) scale(1.02);
   }
 }
 
@@ -199,6 +396,36 @@ body {
   }
   100% {
     background-position: -200% 50%;
+  }
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    background-position: 200% 50%;
+  }
+  100% {
+    background-position: -200% 50%;
+  }
+}
+
+@keyframes caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes spin-in {
+  0% {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
   }
 }
 
@@ -214,21 +441,25 @@ body {
   height: 1em;
   margin-left: 2px;
   vertical-align: text-bottom;
-  background: linear-gradient(180deg, #ff2daf, #22d3ee);
+  background: var(--accent);
   animation: caret-blink 1s steps(1) infinite;
 }
 
-@keyframes caret-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
+/* ============================================================
+   Notion-style Divider
+   ============================================================ */
+
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+  border: none;
+  margin: 0;
 }
 
-/* Respect reduced motion */
+/* ============================================================
+   Reduced Motion
+   ============================================================ */
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -236,5 +467,81 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
+
+  .hover-surface:hover {
+    background-color: var(--surface-hover);
+  }
+
+  .press-scale:active {
+    transform: none;
+  }
+}
+
+/* ============================================================
+   Premium Cursor System
+   Ensures every interactive element has proper cursor states
+   ============================================================ */
+
+/* All buttons, links, and interactive elements get pointer cursor */
+button,
+a,
+[role="button"],
+label[for],
+select,
+summary,
+input[type="checkbox"],
+input[type="radio"],
+input[type="submit"],
+input[type="reset"],
+input[type="button"],
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* Draggable elements get grab cursor */
+[draggable="true"],
+.cursor-grab {
+  cursor: grab;
+}
+
+[draggable="true"]:active,
+.cursor-grab:active,
+.cursor-grabbing {
+  cursor: grabbing;
+}
+
+/* Text inputs get text cursor */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
+input[type="tel"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+textarea,
+[contenteditable="true"] {
+  cursor: text;
+}
+
+/* Disabled elements get not-allowed cursor */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Cards and clickable surfaces */
+.cursor-card {
+  cursor: pointer;
+}
+
+.cursor-card:active {
+  cursor: grabbing;
 }

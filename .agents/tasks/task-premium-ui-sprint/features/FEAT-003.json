@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Focus Mode / Pomodoro Overhaul: Rebuild components/FocusMode.tsx with Pomodoro countdown (25/5 or custom intervals), a beautiful hand-drawn style SVG illustration (cozy desk/plant that grows), session stats, break reminders, warm earthy color palette (greens/ambers), and ambient sound integration (HTML5 audio with free ambient URLs or embedded Spotify for lo-fi).",
+  "status": "completed",
+  "steps": [
+    "1. Redesign components/FocusMode.tsx from count-up timer to Pomodoro countdown mode. Default: 25 min focus / 5 min break. Allow custom intervals via a settings popover (e.g., 25/5, 50/10, custom).",
+    "2. Replace the current breathing guide circle with a beautiful SVG illustration: a cozy desk scene or a plant that visually 'grows' as the Pomodoro progresses (CSS animation or framer-motion to animate SVG paths). Use warm earthy tones (greens, ambers, warm browns).",
+    "3. Change the color palette of the focus mode overlay from cold indigo/purple to warm earthy tones: warm greens (#4ade80, #16a34a), ambers (#f59e0b, #d97706), cream backgrounds. The radial gradient behind should use these warm tones.",
+    "4. Add session stats display: 'You completed N pomodoros today' - persist pomodoro count in localStorage per day.",
+    "5. Add break state: When the 25-min timer ends, auto-transition to 'Break' mode with a 5-min countdown. Show a gentle notification/toast. The UI should visually distinguish between focus and break states (e.g., different accent color, different illustration state).",
+    "6. Integrate ambient sounds: Replace the current 'rain/cafe/silence' buttons with actual working audio. Use HTML5 Audio with free ambient sound URLs (freesound.org CC0 rain loops, cafe sounds). Include a volume slider. Audio should play/pause when focus mode starts/stops.",
+    "7. Style everything with the matte design language from FEAT-001: no glass effects, warm subtle fills, readable text, no excessive glow."
+  ],
+  "acceptance_criteria": [
+    "npm run build passes without errors",
+    "npm run lint passes",
+    "Focus mode has a working Pomodoro countdown timer (25/5 default)",
+    "Custom interval selection is available",
+    "A cozy SVG illustration is present and animates with progress",
+    "Color palette is warm (greens, ambers) not cold (blue/purple)",
+    "Session stats show completed pomodoros count",
+    "Break mode auto-triggers after focus period ends",
+    "Ambient sound buttons actually trigger audio playback via HTML5 Audio",
+    "Volume control exists for ambient sounds"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint"
+  ],
+  "blocked_reason": null,
+  "findings": "Rebuilt FocusMode.tsx completely. Pomodoro countdown (25/5 default, 50/10 preset, custom input). Growing plant SVG animated with framer-motion. Warm earthy color palette (greens, ambers, cream timer text). Session stats in localStorage (chronai-pomodoro-stats key). Break mode auto-transitions after focus ends. HTML5 Audio with Rain/Cafe/Lo-fi ambient sounds (pixabay CC0 URLs), volume slider, graceful error handling. Done state with option to start another or stop. Build and lint pass cleanly."
+}

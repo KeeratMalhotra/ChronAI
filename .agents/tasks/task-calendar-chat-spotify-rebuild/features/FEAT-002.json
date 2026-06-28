@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Transform AI Chat into a sliding side panel that can be detached as a floating draggable window. Change Spotify mini player button to vertical-only drag on right edge.",
+  "status": "completed",
+  "steps": [
+    "Refactor frontend/components/chat/AIChatPanel.tsx: Keep the existing slide-from-right panel behavior. Add a 'detach' button in the header (e.g., an icon like 'ExternalLink' or 'Maximize2' from lucide-react). When detached, the panel becomes a draggable floating window (using framer-motion drag like SpotifyMiniPlayer does). The floating window should have a title bar for dragging, be resizable or fixed-size (400x500px), and have a button to 're-attach' (snap back to slide panel). Use framer-motion's drag prop with dragMomentum={false}.",
+    "Update frontend/app/dashboard/layout.tsx: Add state for 'detached' mode. Pass detached/onDetach/onAttach props to AIChatPanel. When detached, the panel should NOT show the backdrop overlay (since it is floating). The FAB button should still toggle visibility even in detached mode.",
+    "Refactor frontend/components/SpotifyMiniPlayer.tsx: In the snapped (collapsed) state, the button is on the right edge. Change it to be draggable ONLY vertically. Use framer-motion's drag='y' prop to constrain movement to vertical axis only. The button stays pinned to the right edge (right: 0) but the user can drag it up/down to reposition. Save the Y position to localStorage. Remove the free-drag expanded card behavior - it should only be a side button that expands to show the player when clicked, but the button itself moves only vertically.",
+    "Ensure the floating AI chat window has proper z-index (above other content, z-[90] or similar) and does not interfere with the Spotify button or other fixed elements."
+  ],
+  "acceptance_criteria": [
+    "AI Chat slides in from the right as a panel (existing behavior preserved)",
+    "A 'detach' button in the AI Chat header converts it to a floating draggable window",
+    "The floating AI Chat window can be dragged anywhere on screen",
+    "A button on the floating window re-attaches it back to the side panel",
+    "Spotify button is on the right edge and can be dragged vertically only (up/down)",
+    "Spotify button position (Y) persists across page loads via localStorage",
+    "npm run build passes without errors"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint"
+  ],
+  "blocked_reason": null,
+  "findings": "Build and lint pass cleanly. Used inline styles for button positioning instead of styled-jsx for better compatibility. The detached floating window uses framer-motion drag on the entire container div. Drag constraints for the Spotify button are calculated dynamically based on viewport height and current top position."
+}

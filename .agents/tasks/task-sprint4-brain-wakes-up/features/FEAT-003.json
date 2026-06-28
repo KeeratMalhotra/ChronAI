@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Wire AI context into Tasks and Calendar pages. Add reportAction calls on user interactions (drag-drop, create, delete, complete) and show inline AI suggestion banners. Also add WebSocket notification handling for real-time nudges pushed from the backend proactive scheduler.",
+  "status": "completed",
+  "steps": [
+    "In frontend/app/dashboard/tasks/page.tsx: Import useAI from AIContextProvider. Call reportAction('task_dragged', {taskId, fromStatus, toStatus}) inside handleDragEnd when a task changes columns. Call reportAction('task_created', {title, priority}) inside handleCreateTask. Call reportAction('task_completed', {title}) inside handleToggleTask when marking done. Call reportAction('task_deleted', {title}) inside handleDeleteTask. Add an AISuggestionBanner above the task board/list that shows the latest task-related suggestion from useAI().suggestions filtered to relevant types. The banner should only show if there is a suggestion and the user has not dismissed it.",
+    "In frontend/app/dashboard/calendar/page.tsx: Import useAI from AIContextProvider. Call reportAction('event_created', {summary, startTime, duration}) inside handleCreateEvent. Call reportAction('event_deleted', {summary}) inside handleDeleteEvent. Call reportAction('timeslot_clicked', {day: format(day,'yyyy-MM-dd'), hour}) inside handleTimeSlotClick. Add an AISuggestionBanner below the header that shows calendar-related suggestions (e.g., 'You have a gap here - want to block focus time?').",
+    "Create frontend/components/ai/AINotificationListener.tsx: A component that listens for WebSocket 'notification' type messages. Import WebSocketClient pattern from lib/ws.ts to understand the WS message format (DO NOT modify useChatSocket.ts). This component should use its own lightweight listener: subscribe to the existing WS connection by accessing the same WS URL (process.env.NEXT_PUBLIC_WS_URL), or alternatively, read incoming notifications from a dedicated event system. Since we cannot modify useChatSocket.ts, the simplest approach is: the AIContextProvider itself can expose an addNotification method. In dashboard/layout.tsx (which has access to connection state), pass WebSocket notification events to the AI context. Actually, the cleanest approach without modifying useChatSocket: create a custom hook useNotificationSocket that opens a SECOND lightweight WebSocket connection specifically for listening to push notifications. It connects to the same /ws endpoint, authenticates, and only listens (never sends chat). When it receives type='notification' messages, it calls addNotification on the AI context to show them as toasts.",
+    "Add the useNotificationSocket hook to AIContextProvider or as a separate hook in frontend/hooks/useNotificationSocket.ts. It opens a WebSocket connection to process.env.NEXT_PUBLIC_WS_URL, sends an initial auth message, and on receiving {type:'notification', content, metadata}, adds the notification as a suggestion/toast in the AI context.",
+    "Wire AINotificationListener into the dashboard layout so that real-time nudges from the backend proactive scheduler appear as AI toasts.",
+    "Verify build and lint pass."
+  ],
+  "acceptance_criteria": [
+    "Tasks page calls reportAction on drag-drop, create, complete, and delete actions",
+    "Tasks page shows AISuggestionBanner when suggestions are available",
+    "Calendar page calls reportAction on event create, delete, and timeslot click",
+    "Calendar page shows AISuggestionBanner when suggestions are available",
+    "A notification listener exists that receives WebSocket push notifications and shows them as toasts",
+    "Real-time nudges from backend (type='notification') appear in the AI toast system",
+    "npm run build passes",
+    "npm run lint passes"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint"
+  ],
+  "blocked_reason": null,
+  "findings": "Build and lint pass cleanly. Used reportAction inside setTasks updater for handleToggleTask and handleDeleteTask to access the current task before state changes. Added reportAction to useCallback dependency arrays. The notification socket hook uses a separate WebSocket connection with simple reconnect logic (5s delay). AISuggestionBanner shows the first non-dismissed suggestion in both views."
+}

@@ -1,0 +1,39 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "UI Polish & Matte Finish: Complete dark/light mode palette rework, matte surface treatment across all components, typography and spacing improvements, and dark mode contrast fix. This combines sprint items 1 and 5 since they both modify the same CSS variable system and component styles.",
+  "status": "completed",
+  "steps": [
+    "1. Rework app/globals.css dark mode palette: Change .dark variables to softer backgrounds (#0f0f10, #18181b, #232326), warmer text colors (text-tertiary from #6b6b76 to #8b8b96 minimum), matte flat surfaces, replace pure white text with #ededed. Remove glossy glass effects or make them very subtle.",
+    "2. Rework app/globals.css light mode palette: Cream-white backgrounds like Notion (#ffffff, #fafafa), warmer grays for text-secondary and text-tertiary.",
+    "3. Remove hover-lift class effect (no hover 'lift'/translateY). Replace with subtle background color shift. Update .interactive class similarly.",
+    "4. Update tailwind.config.ts: Update gray scale to match new softer dark tones. Reduce shadow depth across all shadow utilities. Remove or tone down glow effects.",
+    "5. Update components/ui/Card.tsx: Remove whileHover y:-2 lift animation. Replace with subtle background-color shift only. Thinner borders (use border-subtle or very light opacity). No shadow on hover - just color shift.",
+    "6. Update components/ui/Button.tsx: Remove whileHover scale:1.015 and whileTap scale:0.97. Use subtle background color shift on hover instead. Remove shadow-sm/shadow-md from primary variant. Matte flat fills only.",
+    "7. Update components/ui/Badge.tsx: Ensure all variants use muted, subtle fills (no loud colors). Keep text readable against new backgrounds.",
+    "8. Update components/ui/Input.tsx: Remove whileFocus scale:1.002. Keep focus border/ring but more subtle.",
+    "9. Update components/layout/Sidebar.tsx: Ensure active states clearly distinguishable with new palette. Remove excessive motion (whileHover scale on icons). Thin border-right should be subtle.",
+    "10. Update components/layout/TopBar.tsx: Ensure backdrop-blur is very subtle, not heavy glass effect. Matte feel.",
+    "11. Typography pass across all components: Increase line-height where body text appears (add leading-relaxed). Use lighter font weights for body text (font-normal not font-medium where appropriate). Tighter letter-spacing on headings (tracking-tight).",
+    "12. Icon stroke weight: Across Sidebar.tsx, TopBar.tsx, dashboard pages, and FocusMode.tsx, ensure lucide icons use strokeWidth={1.5} instead of 2 for a thinner, more refined look.",
+    "13. Spacing: Add more whitespace in dashboard pages. Increase gaps between sections. Notion-level breathing room (space-y-8 instead of space-y-6 where appropriate, larger padding).",
+    "14. Audit dark mode contrast in all components: Ensure text-tertiary (#8b8b96 minimum) is visible. Card borders visible but subtle. Active states clearly distinguishable. Form inputs readable. Check settings page, calendar, habits, tasks pages."
+  ],
+  "acceptance_criteria": [
+    "npm run build passes without errors",
+    "npm run lint passes",
+    "Dark mode uses softer backgrounds (#0f0f10, #18181b, #232326) not the old harsh #0a0a0b",
+    "text-tertiary in dark mode is #8b8b96 or lighter (not #6b6b76)",
+    "No hover-lift translateY effects remain on cards or buttons",
+    "Cards use subtle background shift on hover, no shadow escalation",
+    "Buttons are flat/matte with no scale animations",
+    "Light mode uses Notion-style cream-white (#ffffff, #fafafa) backgrounds",
+    "Icons use strokeWidth 1.5 throughout the app"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint"
+  ],
+  "blocked_reason": null,
+  "findings": "All changes verified with npm run build and npm run lint. Both pass without errors. Dark mode now uses #0f0f10/#18181b/#232326 backgrounds, text-tertiary is #8b8b96, text-primary is #ededed. All hover-lift/glow effects removed. Card, Button, Input no longer have framer-motion scale/y animations. Icons use strokeWidth 1.5 throughout. Light mode uses Notion-style cream-white palette."
+}

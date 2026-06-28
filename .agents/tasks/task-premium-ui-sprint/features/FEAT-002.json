@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Task CRUD Deepening: Add delete task with confirmation, inline edit (title/notes), priority labels (high/medium/low colored dots), subtask creation from detail panel, and an 'Ask AI to prioritize' button that sends tasks to chat. Wire task operations to localStorage persistence since backend API only has fetchTasks.",
+  "status": "completed",
+  "steps": [
+    "1. In app/dashboard/tasks/page.tsx, add a delete task button (trash icon) to both the list view rows and kanban cards. Show a confirmation modal before deleting. Remove the task from local state on confirm.",
+    "2. Enhance inline editing in ListRow: already has click-to-edit title. Add similar inline editing for notes/description in the task detail panel (TaskDetailPanel) - blur to save.",
+    "3. Add a priority field to the LocalTask type: 'high' | 'medium' | 'low' | 'none'. Add priority selector in the create modal and detail panel using colored dots (red for high, amber for medium, blue for low - subtle small dots, not loud badges).",
+    "4. Display priority as a small colored dot next to task title in both board and list views.",
+    "5. Add subtask creation in TaskDetailPanel: an input field at the bottom of subtasks list to type and add new subtasks. Subtasks should be toggleable (mark complete/incomplete).",
+    "6. Add an 'Ask AI to Prioritize' button in the task list header area. When clicked, it should show a visual indicator that AI prioritization was requested (could dispatch to the chat panel or show a toast). For now, just reorder tasks by priority field (high first, then medium, then low, then none).",
+    "7. Add localStorage persistence for tasks: on every task state change (create, edit, delete, reorder, toggle), save the tasks array to localStorage. On page load, hydrate from localStorage before/instead of API fallback.",
+    "8. Ensure all new UI elements follow the matte/flat design from FEAT-001 (no lift effects, subtle colors, thin borders)."
+  ],
+  "acceptance_criteria": [
+    "npm run build passes without errors",
+    "npm run lint passes",
+    "Tasks can be deleted with a trash icon and confirmation dialog",
+    "Task titles and notes can be edited inline (blur to save)",
+    "Tasks have a priority field (high/medium/low/none) with colored dot indicators",
+    "Subtasks can be created from the detail panel",
+    "An 'AI Prioritize' button exists that reorders tasks by priority",
+    "Tasks persist to localStorage and survive page refresh"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && npm run build",
+    "cd /projects/sandbox/ChronAI/frontend && npm run lint"
+  ],
+  "blocked_reason": null,
+  "findings": "All changes implemented in app/dashboard/tasks/page.tsx. Added: delete with confirmation modal, priority field (high/medium/low/none with colored dots), subtask creation in detail panel, AI prioritize button that sorts by priority, notes editing in detail panel with auto-save on blur, localStorage persistence with STORAGE_KEY 'chronai-tasks'. Build and lint both pass cleanly. The file grew from ~460 lines to ~550 lines with the new functionality."
+}
