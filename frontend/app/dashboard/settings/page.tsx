@@ -269,6 +269,29 @@ function SettingsContent() {
     return () => window.removeEventListener("focus", handleFocus);
   }, [authToken]);
 
+  // Listen for postMessage from OAuth popup (popup closes itself and notifies us)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "oauth-connected" && authToken) {
+        const service = event.data.service;
+        setConnectingService(null);
+        oauthPopupRef.current = null;
+        // Refresh integration status
+        fetchIntegrationStatus(authToken).then((status) => {
+          setIntegrationStatus(status);
+          setConnectionToast(`${service} connected successfully!`);
+          setTimeout(() => setConnectionToast(null), 3000);
+          if (status.spotify?.connected) {
+            localStorage.setItem("chronai-spotify-connected", "true");
+            dispatchStorageChange("chronai-spotify-connected", "true");
+          }
+        });
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [authToken]);
+
   // --- AI Preferences handlers ---
   const updateAiTone = (tone: AiTone) => {
     setAiTone(tone);

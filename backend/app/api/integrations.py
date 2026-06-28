@@ -205,9 +205,25 @@ async def oauth_callback(code: str = Query(...), state: str = Query(...)):
         merge=True,
     )
 
-    # Redirect to frontend settings page
-    frontend_url = f"{settings.FRONTEND_ORIGIN}/dashboard/settings?connected={service}"
-    return RedirectResponse(url=frontend_url)
+    # Return a small HTML page that notifies the parent window and closes the popup
+    from fastapi.responses import HTMLResponse
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head><title>Connected</title></head>
+<body>
+<script>
+  if (window.opener) {{
+    window.opener.postMessage({{ type: "oauth-connected", service: "{service}" }}, "*");
+    window.close();
+  }} else {{
+    window.location.href = "{settings.FRONTEND_ORIGIN}/dashboard/settings?connected={service}";
+  }}
+</script>
+<p>Connected {service} successfully. This window should close automatically.</p>
+<p>If it doesn't, <a href="{settings.FRONTEND_ORIGIN}/dashboard/settings">click here</a> to return.</p>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
 
 
 @router.delete("/disconnect/{service}")
