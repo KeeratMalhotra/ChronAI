@@ -29,5 +29,5 @@
     "cd /projects/sandbox/ChronAI/frontend && pnpm build"
   ],
   "blocked_reason": null,
-  "findings": "All 34 tests in test_agents.py pass including 3 new parallel dispatch tests. 2 pre-existing failures in test_user_context.py are unrelated (output format mismatch). Frontend builds cleanly."
+  "findings": "All 36 tests in test_agents.py pass including 3 parallel dispatch tests and 2 new partial-failure tolerance tests. Review fix applied: asyncio.gather now uses return_exceptions=True in both execute() and execute_streaming(), with exceptions logged and filtered so partial results from successful agents are still returned. The producer thread lifetime issue in _generate_with_streaming is pre-existing (from a prior streaming commit) and not addressed in this scope. 2 pre-existing failures in test_user_context.py are unrelated (output format mismatch)."
 }
