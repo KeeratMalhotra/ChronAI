@@ -36,6 +36,7 @@ export default function ChatExperience({
     send,
     finishStreaming,
     hasMessages,
+    loadingHistory,
   } = useChatSocket({ accessToken });
 
   const [voiceActive, setVoiceActive] = useState(false);
@@ -69,7 +70,7 @@ export default function ChatExperience({
               onSend={(v) => send(v, "chat")}
               onVoice={() => setVoiceActive(false)}
               centered={false}
-              disabled={connection === "disconnected"}
+              disabled={connection === "disconnected" || loadingHistory}
             />
           </div>
         </>
@@ -96,35 +97,46 @@ export default function ChatExperience({
               onSend={(v) => send(v, "chat")}
               onVoice={() => setVoiceActive(true)}
               centered={false}
-              disabled={connection === "disconnected"}
+              disabled={connection === "disconnected" || loadingHistory}
             />
           </div>
         </>
       ) : (
-        /* Greeting mode: centered greeting + composer */
+        /* Greeting mode: centered greeting + composer, or loading state */
         <>
           <div className="relative flex-1 overflow-hidden">
-            <motion.div
-              key="greeting"
-              className="absolute inset-0 flex items-center justify-center"
-              exit={{ opacity: 0 }}
-            >
-              <GreetingHero name={userName} />
-            </motion.div>
+            {loadingHistory ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-6 w-6 rounded-full bg-white/20 animate-pulse" />
+                  <p className="text-sm text-white/50">Loading conversation...</p>
+                </div>
+              </div>
+            ) : (
+              <motion.div
+                key="greeting"
+                className="absolute inset-0 flex items-center justify-center"
+                exit={{ opacity: 0 }}
+              >
+                <GreetingHero name={userName} />
+              </motion.div>
+            )}
           </div>
-          <motion.div
-            layout
-            className="pointer-events-none absolute inset-x-0 top-1/2 z-20 flex translate-y-[calc(-50%+7rem)] justify-center px-4"
-          >
-            <div className="pointer-events-auto w-full flex justify-center">
-              <ChatComposer
-                onSend={(v) => send(v, "chat")}
-                onVoice={() => setVoiceActive(true)}
-                centered={true}
-                disabled={connection === "disconnected"}
-              />
-            </div>
-          </motion.div>
+          {!loadingHistory && (
+            <motion.div
+              layout
+              className="pointer-events-none absolute inset-x-0 top-1/2 z-20 flex translate-y-[calc(-50%+7rem)] justify-center px-4"
+            >
+              <div className="pointer-events-auto w-full flex justify-center">
+                <ChatComposer
+                  onSend={(v) => send(v, "chat")}
+                  onVoice={() => setVoiceActive(true)}
+                  centered={true}
+                  disabled={connection === "disconnected" || loadingHistory}
+                />
+              </div>
+            </motion.div>
+          )}
         </>
       )}
     </div>

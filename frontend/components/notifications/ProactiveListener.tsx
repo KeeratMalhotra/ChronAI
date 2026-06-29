@@ -8,7 +8,7 @@ import { fetchProactiveCheck, setProactiveFocus } from "@/lib/api-extended";
 
 // How often to ask the backend for fresh interventions (ms). Conservative on
 // purpose — better to nudge rarely and perfectly than often and annoyingly.
-const CHECK_INTERVAL_MS = 3 * 60_000;
+const CHECK_INTERVAL_MS = 10 * 60_000;
 
 /**
  * ProactiveListener
@@ -16,7 +16,7 @@ const CHECK_INTERVAL_MS = 3 * 60_000;
  *   - keeps the realtime notification socket alive (gentle toasts + inbox sync);
  *   - periodically asks the proactive engine what to surface, showing Tier 2+
  *     nudges as calm toasts (they're already persisted to the inbox server-side);
- *   - tracks focus-session state so nudges are suppressed mid-flow.
+ *   - tracks Pomodoro session state so nudges are suppressed mid-flow.
  * Renders nothing.
  */
 export default function ProactiveListener() {
@@ -28,12 +28,12 @@ export default function ProactiveListener() {
   const accessToken =
     ((session as Record<string, unknown> | null)?.accessToken as string) || "";
 
-  // Live focus-session flag (set by FocusMode via window events).
+  // Live Pomodoro session flag (set by PomodoroTimer via window events).
   const focusActiveRef = useRef(false);
   // Interventions we've already surfaced this session (avoid re-toasting).
   const shownRef = useRef<Set<string>>(new Set());
 
-  // Track focus sessions and mirror the state to the backend so the engine
+  // Track Pomodoro sessions and mirror the state to the backend so the engine
   // suppresses nudges while the user is in flow.
   useEffect(() => {
     const onStart = () => {
@@ -52,12 +52,48 @@ export default function ProactiveListener() {
     };
   }, [accessToken]);
 
+  // Listen for real-time proactive nudges pushed via the chat WebSocket.
+  useEffect(() => {
+    const handleNudge = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (!detail || !detail.content) return;
+
+      // Defense-in-depth: suppress non-emergency nudges if the frontend is in
+      // focus mode, even if the backend's stored state drifted momentarily.
+      if (focusActiveRef.current && (detail.tier || 0) < 3) return;
+
+      const nudgeId =
+        detail.notification_id ||
+        `push-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      if (shownRef.current.has(nudgeId)) return;
+      shownRef.current.add(nudgeId);
+
+      addNotification({
+        id: `proactive-${nudgeId}`,
+        text: detail.content,
+        type: detail.tier >= 3 ? "warning" : "info",
+        actions: detail.action
+          ? [{ label: detail.action.label, action: detail.action.kind }]
+          : [],
+        timestamp: Date.now(),
+        dismissed: false,
+      });
+
+      window.dispatchEvent(new CustomEvent("chronai-notifications-changed"));
+    };
+
+    window.addEventListener("chronai-proactive-nudge", handleNudge);
+    return () => {
+      window.removeEventListener("chronai-proactive-nudge", handleNudge);
+    };
+  }, [addNotification]);
+
   useEffect(() => {
     if (!accessToken) return;
     let cancelled = false;
 
     const runCheck = async () => {
-      // Respect focus mode on the client too — don't even ask while in flow.
+      // Respect Pomodoro mode on the client too — don't even ask while in flow.
       if (focusActiveRef.current) return;
       const { interventions } = await fetchProactiveCheck(
         accessToken,

@@ -56,10 +56,10 @@ export function AIContextProvider({ children }: { children: React.ReactNode }) {
   const addNotification = useCallback((notification: AISuggestion) => {
     setSuggestions((prev) => [...prev, notification]);
 
-    // Auto-remove after 12 seconds
+    // Auto-remove after 30 seconds
     setTimeout(() => {
       setSuggestions((prev) => prev.filter((s) => s.id !== notification.id));
-    }, 12000);
+    }, 30000);
   }, []);
 
   const reportAction = useCallback(

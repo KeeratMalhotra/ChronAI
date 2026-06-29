@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-004",
+  "type": "fix",
+  "description": "Address review issues in SpotifyMiniPlayer: pointer cancel handling, deferred iframe, keyboard accessibility, stale buttonPos fix",
+  "status": "completed",
+  "steps": [
+    "1. Add onPointerCancel/onLostPointerCapture handlers to both the button and window drag surfaces to reset drag state when pointer is cancelled.",
+    "2. Defer iframe rendering until first expand using a hasEverExpanded ref.",
+    "3. Add keyboard accessibility (Enter/Space onKeyDown) to toggle the player open.",
+    "4. Fix stale buttonPos in pointer-up by using a ref for position tracking."
+  ],
+  "acceptance_criteria": [
+    "Pointer cancel events reset drag state on both button and window",
+    "Iframe is not rendered until the user first opens the player",
+    "Keyboard users can activate the music button with Enter or Space",
+    "Button position is persisted accurately using a ref instead of stale closure state",
+    "pnpm lint and pnpm build both pass"
+  ],
+  "verification": [
+    "cd /projects/sandbox/ChronAI/frontend && pnpm lint",
+    "cd /projects/sandbox/ChronAI/frontend && pnpm build"
+  ],
+  "blocked_reason": null,
+  "findings": "All four review issues addressed. Used refs (buttonPosRef, windowPosRef) instead of state in useCallback dependencies to prevent stale closures. The hasEverExpanded ref conditionally renders the iframe container - once expanded, it stays mounted forever so music persists. The onLostPointerCapture handler serves as a backup for onPointerCancel in case the browser fires that event instead."
+}

@@ -18,17 +18,17 @@ function MarkdownContent({ content }: { content: string }) {
       remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ children }) => (
-          <h1 className="mb-3 mt-4 text-xl font-bold text-[var(--text-primary)] first:mt-0">
+          <h1 className="mb-3 mt-4 text-xl font-bold text-[var(--text-primary)] dark:text-[#ece9e4] first:mt-0">
             {children}
           </h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-2 mt-3 text-lg font-semibold text-[var(--text-primary)] first:mt-0">
+          <h2 className="mb-2 mt-3 text-lg font-semibold text-[var(--text-primary)] dark:text-[#ece9e4] first:mt-0">
             {children}
           </h2>
         ),
         h3: ({ children }) => (
-          <h3 className="mb-2 mt-3 text-base font-semibold text-[var(--text-primary)] first:mt-0">
+          <h3 className="mb-2 mt-3 text-base font-semibold text-[var(--text-primary)] dark:text-[#ece9e4] first:mt-0">
             {children}
           </h3>
         ),
@@ -77,7 +77,7 @@ function MarkdownContent({ content }: { content: string }) {
           </a>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="mb-2 border-l-2 border-accent-500/40 pl-3 italic text-[var(--text-secondary)] last:mb-0">
+          <blockquote className="mb-2 border-l-2 border-accent-500/40 pl-3 italic text-[var(--text-secondary)] dark:text-[#a8a39c] last:mb-0">
             {children}
           </blockquote>
         ),
@@ -109,6 +109,9 @@ function MarkdownContent({ content }: { content: string }) {
 /**
  * Reveals AI text token-by-token to create a calm "streaming" feel, even though
  * the backend delivers the full answer in one frame. User messages render instantly.
+ *
+ * For truly streamed messages (content growing via chunks from the backend),
+ * the typewriter interval is skipped and revealed content tracks props directly.
  */
 export default function MessageBubble({
   message,
@@ -118,6 +121,27 @@ export default function MessageBubble({
   const shouldStream = !isUser && message.streaming;
   const [revealed, setRevealed] = useState(shouldStream ? "" : message.content);
   const completedRef = useRef(false);
+  const prevContentRef = useRef(message.content);
+  const isExternallyStreamingRef = useRef(false);
+
+  // Detect externally streamed messages: if content grows between renders while
+  // streaming is true, we are receiving real-time chunks from the backend.
+  useEffect(() => {
+    if (shouldStream && message.content !== prevContentRef.current) {
+      // Content changed externally (new chunk arrived) -- render directly
+      isExternallyStreamingRef.current = true;
+      setRevealed(message.content);
+    }
+    prevContentRef.current = message.content;
+  }, [message.content, shouldStream]);
+
+  // When streaming becomes false (text_end received), fire onStreamComplete
+  useEffect(() => {
+    if (!message.streaming && isExternallyStreamingRef.current && !completedRef.current) {
+      completedRef.current = true;
+      onStreamComplete?.(message.id);
+    }
+  }, [message.streaming, message.id, onStreamComplete]);
 
   useEffect(() => {
     if (!shouldStream) {
@@ -125,6 +149,12 @@ export default function MessageBubble({
       return;
     }
 
+    // If this message is being externally streamed, don't run the interval
+    if (isExternallyStreamingRef.current) {
+      return;
+    }
+
+    // Client-side typewriter for non-streamed full responses
     const tokens = message.content.split(/(\s+)/); // keep whitespace tokens
     let i = 0;
     let current = "";
@@ -154,7 +184,7 @@ export default function MessageBubble({
       className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
     >
       {isUser ? (
-        <div className="max-w-[78%] rounded-2xl rounded-br-md border border-[var(--border)] bg-[var(--surface-hover)] px-4 py-2.5 text-[15px] leading-relaxed text-[var(--text-primary)]">
+        <div className="max-w-[78%] rounded-2xl rounded-br-md border border-[var(--border)] bg-[var(--surface-hover)] px-4 py-2.5 text-[15px] leading-relaxed text-[var(--text-primary)] dark:text-[#ece9e4]">
           <p className="whitespace-pre-wrap">{message.content}</p>
         </div>
       ) : (
@@ -165,7 +195,7 @@ export default function MessageBubble({
             className={`text-[15px] leading-relaxed ${
               message.isError
                 ? "text-rose-400"
-                : "text-[var(--text-primary)]"
+                : "text-[var(--text-primary)] dark:text-[#ece9e4]"
             }`}
           >
             <div

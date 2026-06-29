@@ -8,7 +8,6 @@ import { BarChart3, TrendingUp, Target, Zap } from "lucide-react";
 
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState } from "@/components/ui/EmptyState";
 
 // ─── Animation Variants ─────────────────────────────────────────────────────
 
@@ -42,14 +41,13 @@ type TimePeriod = "week" | "month" | "30days";
 interface TaskData {
   id?: string;
   completed?: boolean;
+  status?: string;
   completedAt?: string;
   updatedAt?: string;
 }
 
-interface PomodoroStats {
-  sessions?: { date: string; minutes: number }[];
-  totalMinutes?: number;
-}
+// PomodoroTimer stores stats as Record<string, number>: { "YYYY-MM-DD": totalMinutes }
+type PomodoroStatsRecord = Record<string, number>;
 
 interface HabitData {
   id?: string;
@@ -313,10 +311,10 @@ function RingChart({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-[var(--text-primary)]">
+        <span className="text-2xl font-bold text-[var(--text-primary)] dark:text-[#ece9e4]">
           {Math.round(percentage)}%
         </span>
-        <span className="text-[10px] text-[var(--text-tertiary)]">
+        <span className="text-[10px] text-[var(--text-tertiary)] dark:text-[#847e76]">
           completed
         </span>
       </div>
@@ -331,7 +329,7 @@ function ProductivityScore({ score }: { score: number }) {
       ? "text-success-500"
       : clampedScore >= 50
         ? "text-warning-500"
-        : "text-[var(--text-tertiary)]";
+        : "text-[var(--text-tertiary)] dark:text-[#847e76]";
   const bgColor =
     clampedScore >= 75
       ? "bg-success-500/10"
@@ -349,10 +347,10 @@ function ProductivityScore({ score }: { score: number }) {
         </span>
       </div>
       <div className="text-center">
-        <p className="text-sm font-medium text-[var(--text-primary)]">
+        <p className="text-sm font-medium text-[var(--text-primary)] dark:text-[#ece9e4]">
           Productivity Score
         </p>
-        <p className="text-xs text-[var(--text-tertiary)]">
+        <p className="text-xs text-[var(--text-tertiary)] dark:text-[#847e76]">
           {clampedScore >= 75
             ? "Excellent!"
             : clampedScore >= 50
@@ -390,7 +388,7 @@ function TimePeriodSelector({
             ${
               value === opt.value
                 ? "bg-accent-500 text-white shadow-sm"
-                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]"
+                : "text-[var(--text-secondary)] dark:text-[#a8a39c] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4] hover:bg-[var(--surface-hover)]"
             }
           `}
         >
@@ -404,6 +402,10 @@ function TimePeriodSelector({
 // ─── Main Page Component ────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  return <AnalyticsContent />;
+}
+
+function AnalyticsContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
@@ -419,9 +421,7 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState<TimePeriod>("week");
   const [loading, setLoading] = useState(true);
   const [tasksData, setTasksData] = useState<TaskData[]>([]);
-  const [pomodoroStats, setPomodoroStats] = useState<PomodoroStats | null>(
-    null
-  );
+  const [pomodoroStats, setPomodoroStats] = useState<PomodoroStatsRecord>({});
   const [habitsData, setHabitsData] = useState<HabitData[]>([]);
 
   // Load data from localStorage
@@ -432,19 +432,28 @@ export default function AnalyticsPage() {
       if (tasksRaw) {
         const parsed = JSON.parse(tasksRaw);
         setTasksData(Array.isArray(parsed) ? parsed : []);
+      } else {
+        setTasksData([]);
       }
     } catch {
-      // silently fail
+      setTasksData([]);
     }
 
     try {
       const pomodoroRaw = localStorage.getItem("chronai-pomodoro-stats");
       if (pomodoroRaw) {
         const parsed = JSON.parse(pomodoroRaw);
-        setPomodoroStats(parsed && typeof parsed === "object" ? parsed : null);
+        // PomodoroTimer stores stats as { "YYYY-MM-DD": count, ... }
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          setPomodoroStats(parsed as PomodoroStatsRecord);
+        } else {
+          setPomodoroStats({});
+        }
+      } else {
+        setPomodoroStats({});
       }
     } catch {
-      // silently fail
+      setPomodoroStats({});
     }
 
     try {
@@ -470,12 +479,18 @@ export default function AnalyticsPage() {
     const counts: Record<string, number> = {};
     dateKeys.forEach((key) => (counts[key] = 0));
 
+    const todayKey = new Date().toISOString().split("T")[0];
+
     tasksData.forEach((task) => {
-      if (task.completed) {
+      // Check both completed boolean and status === "done"
+      if (task.completed || task.status === "done") {
         const dateStr =
           task.completedAt?.split("T")[0] || task.updatedAt?.split("T")[0];
         if (dateStr && counts[dateStr] !== undefined) {
           counts[dateStr]++;
+        } else if (!dateStr && counts[todayKey] !== undefined) {
+          // Tasks marked done without a completedAt/updatedAt date count in today's bucket
+          counts[todayKey]++;
         }
       }
     });
@@ -487,13 +502,11 @@ export default function AnalyticsPage() {
     const hours: Record<string, number> = {};
     dateKeys.forEach((key) => (hours[key] = 0));
 
-    if (pomodoroStats?.sessions) {
-      pomodoroStats.sessions.forEach((session) => {
-        const dateStr = session.date?.split("T")[0];
-        if (dateStr && hours[dateStr] !== undefined) {
-          hours[dateStr] += session.minutes / 60;
-        }
-      });
+    // pomodoroStats is Record<string, number> where value = total focus minutes for the day
+    for (const [dateKey, minutes] of Object.entries(pomodoroStats)) {
+      if (typeof minutes === "number" && hours[dateKey] !== undefined) {
+        hours[dateKey] += minutes / 60;
+      }
     }
 
     return dateKeys.map((key) => Math.round((hours[key] || 0) * 10) / 10);
@@ -538,7 +551,7 @@ export default function AnalyticsPage() {
   }, [tasksPerDay, focusHoursPerDay, habitCompletionRate, period]);
 
   const hasAnyData =
-    tasksData.length > 0 || pomodoroStats !== null || habitsData.length > 0;
+    tasksData.length > 0 || Object.keys(pomodoroStats).length > 0 || habitsData.length > 0;
 
   // Check if there's any data in the currently selected time period
   const periodHasActivity = useMemo(() => {
@@ -553,11 +566,7 @@ export default function AnalyticsPage() {
   // Auth checks
   if (status === "loading") {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="space-y-6"
-      >
+      <div className="space-y-6">
         <Skeleton className="h-10 w-48" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Skeleton className="h-40" />
@@ -565,7 +574,7 @@ export default function AnalyticsPage() {
           <Skeleton className="h-40" />
           <Skeleton className="h-40" />
         </div>
-      </motion.div>
+      </div>
     );
   }
 
@@ -577,11 +586,7 @@ export default function AnalyticsPage() {
   // Loading state with skeletons
   if (loading) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="space-y-6"
-      >
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <Skeleton className="h-8 w-40" />
           <Skeleton className="h-9 w-72" />
@@ -594,43 +599,43 @@ export default function AnalyticsPage() {
           <Skeleton className="h-56" />
           <Skeleton className="h-56" />
         </div>
-      </motion.div>
+      </div>
     );
   }
 
   // Empty state when no data exists
   if (!hasAnyData) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="space-y-6"
-      >
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)] md:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)] dark:text-[#ece9e4] md:text-3xl">
             Analytics
           </h1>
           <TimePeriodSelector value={period} onChange={setPeriod} />
         </div>
-        <EmptyState
-          icon={
+        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-hover)] border border-[var(--border)] mb-5">
             <BarChart3
               size={24}
               strokeWidth={1.5}
-              className="text-[var(--text-tertiary)]"
+              className="text-[var(--text-tertiary)] dark:text-[#847e76]"
             />
-          }
-          title="No data yet"
-          description="Start completing tasks, logging focus sessions, and building habits to see your productivity analytics here."
-        />
-      </motion.div>
+          </div>
+          <h3 className="text-lg font-semibold text-[var(--text-primary)] dark:text-[#ece9e4] mb-1.5">
+            No data yet
+          </h3>
+          <p className="text-sm text-[var(--text-tertiary)] dark:text-[#847e76] max-w-xs leading-relaxed">
+            Start completing tasks, logging focus sessions, and building habits to see your productivity analytics here.
+          </p>
+        </div>
+      </div>
     );
   }
 
   return (
     <motion.div
       variants={reducedContainerVariants}
-      initial="hidden"
+      initial={false}
       animate="visible"
       className="space-y-6"
     >
@@ -639,7 +644,7 @@ export default function AnalyticsPage() {
         variants={reducedItemVariants}
         className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       >
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)] md:text-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)] dark:text-[#ece9e4] md:text-3xl">
           Analytics
         </h1>
         <TimePeriodSelector value={period} onChange={setPeriod} />
@@ -651,10 +656,10 @@ export default function AnalyticsPage() {
           variants={reducedItemVariants}
           className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)] px-4 py-3 text-center"
         >
-          <p className="text-sm text-[var(--text-secondary)]">
+          <p className="text-sm text-[var(--text-secondary)] dark:text-[#a8a39c]">
             No activity in this period
           </p>
-          <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
+          <p className="text-xs text-[var(--text-tertiary)] dark:text-[#847e76] mt-0.5">
             Try selecting a different time range to see your data.
           </p>
         </motion.div>
@@ -674,10 +679,10 @@ export default function AnalyticsPage() {
                 />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                <p className="text-sm font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]">
                   Tasks Completed
                 </p>
-                <p className="text-xs text-[var(--text-tertiary)]">Per day</p>
+                <p className="text-xs text-[var(--text-tertiary)] dark:text-[#847e76]">Per day</p>
               </div>
             </div>
             <div className="h-36">
@@ -687,7 +692,7 @@ export default function AnalyticsPage() {
                 maxValue={maxTasksPerDay}
               />
             </div>
-            <p className="mt-2 text-xs text-[var(--text-tertiary)]">
+            <p className="mt-2 text-xs text-[var(--text-tertiary)] dark:text-[#847e76]">
               Total: {tasksPerDay.reduce((a, b) => a + b, 0)} tasks
             </p>
           </Card>
@@ -705,11 +710,11 @@ export default function AnalyticsPage() {
                 />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                <p className="text-sm font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]">
                   Focus Hours
                 </p>
-                <p className="text-xs text-[var(--text-tertiary)]">
-                  Time in focus mode
+                <p className="text-xs text-[var(--text-tertiary)] dark:text-[#847e76]">
+                  Time in Pomodoro
                 </p>
               </div>
             </div>
@@ -720,7 +725,7 @@ export default function AnalyticsPage() {
                 maxValue={maxFocusHours}
               />
             </div>
-            <p className="mt-2 text-xs text-[var(--text-tertiary)]">
+            <p className="mt-2 text-xs text-[var(--text-tertiary)] dark:text-[#847e76]">
               Total:{" "}
               {Math.round(
                 focusHoursPerDay.reduce((a, b) => a + b, 0) * 10
@@ -742,10 +747,10 @@ export default function AnalyticsPage() {
                 />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                <p className="text-sm font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]">
                   Habit Completion
                 </p>
-                <p className="text-xs text-[var(--text-tertiary)]">
+                <p className="text-xs text-[var(--text-tertiary)] dark:text-[#847e76]">
                   Overall rate
                 </p>
               </div>
@@ -768,10 +773,10 @@ export default function AnalyticsPage() {
                 />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                <p className="text-sm font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]">
                   Productivity
                 </p>
-                <p className="text-xs text-[var(--text-tertiary)]">
+                <p className="text-xs text-[var(--text-tertiary)] dark:text-[#847e76]">
                   Overall score
                 </p>
               </div>

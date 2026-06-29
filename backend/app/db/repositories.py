@@ -13,6 +13,7 @@ from app.db.models import (
     User,
     Task,
     Habit,
+    ChatMessage,
     Conversation,
     UserMemory,
     Notification,
@@ -515,6 +516,108 @@ class ConversationRepository:
                 {"messages": messages}
             )
 
+
+
+class MessageRepository:
+    """Repository for per-user chat messages stored as a Firestore subcollection.
+
+    Messages live at ``users/{user_id}/messages`` so they are scoped per user
+    and can be queried efficiently by timestamp.
+    """
+
+    @classmethod
+    async def save_message(
+        cls,
+        user_id: str,
+        role: str,
+        content: str,
+        message_id: str = "",
+    ) -> ChatMessage:
+        """Persist a single chat message to the user's subcollection.
+
+        Args:
+            user_id: The owning user's ID.
+            role: "user" or "assistant".
+            content: The message text.
+            message_id: Optional client-generated ID for deduplication.
+
+        Returns:
+            The persisted ChatMessage with its Firestore-assigned ID.
+        """
+        db = get_db()
+        now = datetime.utcnow()
+        msg = ChatMessage(
+            user_id=user_id,
+            role=role,
+            content=content,
+            message_id=message_id,
+            timestamp=now,
+        )
+        doc_ref = (
+            db.collection("users")
+            .document(user_id)
+            .collection("messages")
+            .document()
+        )
+        data = msg.model_dump(exclude={"id"})
+        await doc_ref.set(data)
+        msg.id = doc_ref.id
+        return msg
+
+    @classmethod
+    async def get_recent_messages(
+        cls, user_id: str, limit: int = 50
+    ) -> list[ChatMessage]:
+        """Load the most recent messages for context, returned oldest-first.
+
+        Args:
+            user_id: The user's ID.
+            limit: Maximum number of messages to return (capped at 50 for
+                Gemini context window budget).
+
+        Returns:
+            List of ChatMessage instances sorted oldest-first so they can be
+            fed directly into the orchestrator as conversation_history.
+        """
+        db = get_db()
+        coll_ref = (
+            db.collection("users")
+            .document(user_id)
+            .collection("messages")
+        )
+        query = coll_ref.order_by("timestamp", direction="DESCENDING").limit(limit)
+        messages: list[ChatMessage] = []
+        async for doc in query.stream():
+            data = doc.to_dict()
+            data["id"] = doc.id
+            messages.append(ChatMessage(**data))
+        # Reverse so oldest is first (chronological order for context).
+        messages.reverse()
+        return messages
+
+    @classmethod
+    async def get_history(
+        cls, user_id: str, limit: int = 50
+    ) -> list[dict]:
+        """Load recent messages formatted for the REST endpoint.
+
+        Args:
+            user_id: The user's ID.
+            limit: Maximum number of messages to return.
+
+        Returns:
+            List of dicts with id, role, content, and timestamp (ISO string).
+        """
+        messages = await cls.get_recent_messages(user_id, limit)
+        return [
+            {
+                "id": m.id,
+                "role": m.role,
+                "content": m.content,
+                "timestamp": m.timestamp.isoformat() if m.timestamp else "",
+            }
+            for m in messages
+        ]
 
 
 class MemoryRepository:

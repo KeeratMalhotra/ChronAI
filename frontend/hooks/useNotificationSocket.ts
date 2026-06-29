@@ -72,6 +72,9 @@ export function useNotificationSocket() {
               // Non-critical.
             }
           }
+          // proactive_nudge messages are handled exclusively by
+          // ProactiveListener via the chat socket CustomEvent bridge.
+          // Handling them here would cause duplicate notifications.
         } catch {
           // Ignore malformed messages
         }

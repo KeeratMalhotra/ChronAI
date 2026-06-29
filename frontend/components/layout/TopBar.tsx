@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Menu, MessageCircle, Plus, CheckSquare, Calendar, Timer, Zap, Sparkles } from "lucide-react";
+import { Search, Menu, MessageCircle, Plus, CheckSquare, Calendar, Timer, Sparkles } from "lucide-react";
 import Image from "next/image";
 import NotificationBell from "./NotificationBell";
 
@@ -30,11 +30,6 @@ const quickActions = [
   {
     label: "Start Pomodoro",
     icon: Timer,
-    href: null,
-  },
-  {
-    label: "Start Focus",
-    icon: Zap,
     href: null,
   },
 ];
@@ -91,8 +86,8 @@ export default function TopBar({
     setActionsOpen(false);
     if (action.href) {
       router.push(action.href);
-    } else if (action.label === "Start Pomodoro" || action.label === "Start Focus") {
-      // Dispatch a custom event that FocusMode can listen for
+    } else if (action.label === "Start Pomodoro") {
+      // Dispatch a custom event that PomodoroTimer can listen for
       window.dispatchEvent(new CustomEvent("chronai-start-focus"));
     }
   };
@@ -118,7 +113,7 @@ export default function TopBar({
             onClick={onMenuClick}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.92 }}
-            className="rounded-lg p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] md:hidden"
+            className="rounded-lg p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--text-secondary)] dark:text-[#a8a39c] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4] md:hidden"
             aria-label="Open menu"
           >
             <Menu size={20} strokeWidth={1.5} />
@@ -129,7 +124,7 @@ export default function TopBar({
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="text-base font-semibold text-[var(--text-primary)]"
+          className="text-base font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]"
         >
           {title}
         </motion.h1>
@@ -146,7 +141,7 @@ export default function TopBar({
             className={`flex items-center justify-center rounded-lg p-2 border border-[var(--border)] bg-[var(--surface)] transition-colors hover:bg-[var(--surface-hover)] ${
               actionsOpen
                 ? "text-accent-500"
-                : "text-[var(--text-secondary)]"
+                : "text-[var(--text-secondary)] dark:text-[#a8a39c]"
             }`}
             aria-label="Quick actions"
           >
@@ -168,10 +163,10 @@ export default function TopBar({
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-[var(--surface-hover)]"
                 >
                   <Sparkles size={16} strokeWidth={1.5} className="text-accent-500 shrink-0" />
-                  <span className="flex-1 text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">
+                  <span className="flex-1 text-sm font-medium text-[var(--text-primary)] dark:text-[#ece9e4] whitespace-nowrap">
                     Quick Capture
                   </span>
-                  <kbd className="rounded-md bg-[var(--bg-tertiary)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
+                  <kbd className="rounded-md bg-[var(--bg-tertiary)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-tertiary)] dark:text-[#847e76] border border-[var(--border-subtle)]">
                     n
                   </kbd>
                 </button>
@@ -187,7 +182,7 @@ export default function TopBar({
                       className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-[var(--surface-hover)]"
                     >
                       <Icon size={16} strokeWidth={1.5} className="text-accent-500 shrink-0" />
-                      <span className="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">
+                      <span className="text-sm font-medium text-[var(--text-primary)] dark:text-[#ece9e4] whitespace-nowrap">
                         {action.label}
                       </span>
                     </button>
@@ -203,11 +198,11 @@ export default function TopBar({
           onClick={handleSearchClick}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="hidden items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text-tertiary)] transition-all duration-200 hover:border-[var(--text-tertiary)]/30 hover:bg-[var(--surface-hover)] hover:text-[var(--text-secondary)] hover:shadow-sm sm:flex"
+          className="hidden items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text-tertiary)] dark:text-[#847e76] transition-all duration-200 hover:border-[var(--text-tertiary)]/30 hover:bg-[var(--surface-hover)] hover:text-[var(--text-secondary)] dark:hover:text-[#a8a39c] hover:shadow-sm sm:flex"
         >
           <Search size={14} strokeWidth={1.5} />
           <span>Search</span>
-          <kbd className="ml-2 rounded-md bg-[var(--bg-tertiary)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
+          <kbd className="ml-2 rounded-md bg-[var(--bg-tertiary)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-tertiary)] dark:text-[#847e76] border border-[var(--border-subtle)]">
             &#8984;K
           </kbd>
         </motion.button>
@@ -218,14 +213,17 @@ export default function TopBar({
             onClick={onChatToggle}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`flex items-center justify-center rounded-lg p-2 border border-[var(--border)] bg-[var(--surface)] transition-colors hover:bg-[var(--surface-hover)] ${
+            className={`relative flex items-center justify-center rounded-lg p-2 border border-[var(--border)] bg-[var(--surface)] transition-colors hover:bg-[var(--surface-hover)] ${
               chatOpen
                 ? "text-accent-500"
-                : "text-[var(--text-secondary)]"
+                : "text-[var(--text-secondary)] dark:text-[#a8a39c]"
             }`}
             aria-label={chatOpen ? "Close AI chat" : "Open AI chat"}
           >
             <MessageCircle size={16} strokeWidth={1.5} />
+            <span className="absolute -top-1 -right-1 flex items-center justify-center h-3.5 w-3.5 rounded-full bg-accent-500/20">
+              <Sparkles size={8} className="text-accent-500" />
+            </span>
           </motion.button>
         )}
 

@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 import vertexai
 from vertexai.generative_models import GenerativeModel
 
-from app.agents.base import AgentBase, AgentRegistry
+from app.agents.base import AgentBase, AgentRegistry, _stream_callback_var
+from app.agents.memory import retrieve_relevant_memories
 from app.config import settings
 from app.utils.timectx import time_context_string
 from app.utils.user_context import get_user_context
@@ -190,15 +191,19 @@ class OrchestratorAgent(AgentBase):
                 "pending_action": None,
             }
 
-        # Route to specialist agents
-        results = []
+        # Route to specialist agents (parallel dispatch)
+        # Retrieve relevant memories for personalization (graceful degradation).
+        user_id = task.get("user", {}).get("sub", "") if isinstance(task.get("user"), dict) else ""
+        relevant_memories = await retrieve_relevant_memories(user_id, message) if user_id else []
+
+        # Emit all status callbacks first, then dispatch concurrently.
+        coroutines = []
         for agent_task in routing.get("tasks", []):
             agent_name = agent_task.get("agent", "")
             instruction = agent_task.get("instruction", message)
             agent = AgentRegistry.get(agent_name)
 
             if agent:
-                # Emit a real-time status update before the slow agent work.
                 if status_callback:
                     try:
                         await status_callback(
@@ -212,16 +217,26 @@ class OrchestratorAgent(AgentBase):
                         logger.warning(f"[orchestrator] status_callback failed: {e}")
 
                 logger.info(f"[orchestrator] Dispatching to '{agent_name}': {instruction}")
-                result = await agent.execute(
-                    {
-                        "message": instruction,
-                        "original_message": message,
-                        "auth_token": auth_token,
-                        "user_id": task.get("user", {}).get("sub", "") if isinstance(task.get("user"), dict) else "",
-                    }
+                coroutines.append(
+                    agent.execute(
+                        {
+                            "message": instruction,
+                            "original_message": message,
+                            "auth_token": auth_token,
+                            "user_id": task.get("user", {}).get("sub", "") if isinstance(task.get("user"), dict) else "",
+                            "relevant_memories": relevant_memories,
+                        }
+                    )
                 )
-                logger.info(f"[orchestrator] '{agent_name}' responded with {len(result.get('content', ''))} chars")
-                results.append(result)
+
+        raw_results = list(await asyncio.gather(*coroutines, return_exceptions=True)) if coroutines else []
+        results = []
+        for r in raw_results:
+            if isinstance(r, BaseException):
+                logger.error(f"[orchestrator] Agent failed during parallel dispatch: {r}")
+            else:
+                logger.info(f"[orchestrator] '{r.get('agent', '?')}' responded with {len(r.get('content', ''))} chars")
+                results.append(r)
 
         # An agent may ask for clarification or confirmation; capture the first
         # pending action so the caller can remember it for the next turn.
@@ -254,6 +269,232 @@ class OrchestratorAgent(AgentBase):
                 "routed_to": routing.get("agents", []),
             },
             "pending_action": new_pending,
+        }
+
+    async def execute_streaming(self, task: dict, send_chunk, status_callback=None) -> dict:
+        """Stream-aware version of execute().
+
+        Performs the same intent analysis and routing as execute(). For
+        single-agent responses (the common case), sets the stream callback on
+        the specialist agent so its generate() call streams token-by-token.
+
+        For direct_response, multi-agent consolidation, or pending_action flows,
+        falls back to non-streaming behavior and returns the full content.
+
+        Args:
+            task: Same task dict as execute().
+            send_chunk: Async callable that receives a string chunk to send
+                to the client.
+            status_callback: Optional async callable for status updates.
+
+        Returns:
+            Same dict shape as execute(): {content, agent, metadata, pending_action}.
+            The 'content' field is the full text (already streamed chunk-by-chunk
+            to the client via send_chunk if streaming was used).
+            Also includes '_streamed': True/False to indicate if chunks were sent.
+        """
+        message = task.get("message", "")
+        auth_token = task.get("auth_token", "")
+        conversation_history: list[dict] = task.get("conversation_history", [])
+        pending_action: dict | None = task.get("pending_action")
+
+        # Add user message to per-connection history
+        conversation_history.append({"role": "user", "content": message})
+
+        # If a clarification/confirmation is pending, handle it non-streamed
+        if pending_action:
+            handled = await self._handle_pending(
+                message, pending_action, task, status_callback
+            )
+            if handled is not None:
+                conversation_history.append(
+                    {"role": "assistant", "content": handled["content"]}
+                )
+                handled["_streamed"] = False
+                return handled
+
+        # Analyze intent with Gemini (non-streamed -- this is internal routing)
+        user_id = task.get("user", {}).get("sub", "") if isinstance(task.get("user"), dict) else ""
+        routing = await self._analyze_intent(message, conversation_history, user_id)
+
+        logger.info(f"[orchestrator] Streaming routing: intent={routing.get('intent')}, agents={routing.get('agents', [])}")
+
+        # Direct response -- no streaming needed
+        if routing.get("direct_response") and not routing.get("agents"):
+            is_greeting = self._is_greeting(message)
+            if is_greeting and user_id:
+                greeting_text = await self._generate_short_greeting(user_id, task.get("auth_token", ""))
+                if greeting_text:
+                    conversation_history.append(
+                        {"role": "assistant", "content": greeting_text}
+                    )
+                    return {
+                        "content": greeting_text,
+                        "agent": self.name,
+                        "metadata": {"intent": "greeting_short", "routed_to": []},
+                        "pending_action": None,
+                        "_streamed": False,
+                    }
+
+            response_content = routing["direct_response"]
+            conversation_history.append(
+                {"role": "assistant", "content": response_content}
+            )
+            return {
+                "content": response_content,
+                "agent": self.name,
+                "metadata": {"intent": routing.get("intent", ""), "routed_to": []},
+                "pending_action": None,
+                "_streamed": False,
+            }
+
+        tasks_list = routing.get("tasks", [])
+
+        # Retrieve relevant memories for personalization (graceful degradation).
+        relevant_memories = await retrieve_relevant_memories(user_id, message) if user_id else []
+
+        # Single-agent routing -- use streaming
+        if len(tasks_list) == 1:
+            agent_task = tasks_list[0]
+            agent_name = agent_task.get("agent", "")
+            instruction = agent_task.get("instruction", message)
+            agent = AgentRegistry.get(agent_name)
+
+            if agent:
+                # Emit status update before the slow agent work
+                if status_callback:
+                    try:
+                        await status_callback(
+                            {
+                                "type": "status",
+                                "content": self._status_for(agent_name),
+                                "agent": agent_name,
+                            }
+                        )
+                    except Exception as e:
+                        logger.warning(f"[orchestrator] status_callback failed: {e}")
+
+                # Track whether any chunks were actually sent to the client.
+                chunks_sent = 0
+
+                async def _counting_send_chunk(text: str) -> None:
+                    nonlocal chunks_sent
+                    chunks_sent += 1
+                    await send_chunk(text)
+
+                # Set the stream callback via contextvar so that any call to
+                # generate() from the specialist agent (or any code it invokes)
+                # will automatically use streaming mode. This is per-async-task
+                # safe and avoids requiring specialists to extract the callback
+                # from the task dict manually.
+                token = _stream_callback_var.set(_counting_send_chunk)
+                try:
+                    result = await agent.execute(
+                        {
+                            "message": instruction,
+                            "original_message": message,
+                            "auth_token": auth_token,
+                            "user_id": user_id,
+                            "relevant_memories": relevant_memories,
+                        }
+                    )
+                finally:
+                    _stream_callback_var.reset(token)
+
+                new_pending = result.get("pending_action")
+                content = result.get("content", "")
+
+                # Context chaining follow-up
+                if not new_pending:
+                    followup = await self._suggest_followup(message, [result])
+                    if followup:
+                        content = f"{content}\n\n{followup}"
+                        # Send the follow-up as a final chunk
+                        await send_chunk(f"\n\n{followup}")
+                        chunks_sent += 1
+
+                conversation_history.append(
+                    {"role": "assistant", "content": content}
+                )
+
+                return {
+                    "content": content,
+                    "agent": self.name,
+                    "metadata": {
+                        "intent": routing.get("intent", ""),
+                        "routed_to": routing.get("agents", []),
+                    },
+                    "pending_action": new_pending,
+                    "_streamed": True,
+                    "_chunks_sent": chunks_sent,
+                }
+
+        # Multi-agent routing -- fall back to non-streaming (parallel dispatch)
+        # Emit all status callbacks first, then dispatch concurrently.
+        coroutines = []
+        for agent_task in tasks_list:
+            agent_name = agent_task.get("agent", "")
+            instruction = agent_task.get("instruction", message)
+            agent = AgentRegistry.get(agent_name)
+
+            if agent:
+                if status_callback:
+                    try:
+                        await status_callback(
+                            {
+                                "type": "status",
+                                "content": self._status_for(agent_name),
+                                "agent": agent_name,
+                            }
+                        )
+                    except Exception:
+                        pass
+
+                coroutines.append(
+                    agent.execute(
+                        {
+                            "message": instruction,
+                            "original_message": message,
+                            "auth_token": auth_token,
+                            "user_id": user_id,
+                            "relevant_memories": relevant_memories,
+                        }
+                    )
+                )
+
+        raw_results = list(await asyncio.gather(*coroutines, return_exceptions=True)) if coroutines else []
+        results = []
+        for r in raw_results:
+            if isinstance(r, BaseException):
+                logger.error(f"[orchestrator] Agent failed during streaming parallel dispatch: {r}")
+            else:
+                results.append(r)
+
+        new_pending = next(
+            (r.get("pending_action") for r in results if r.get("pending_action")),
+            None,
+        )
+
+        consolidated = await self._consolidate_responses(message, results)
+
+        if not new_pending:
+            followup = await self._suggest_followup(message, results)
+            if followup:
+                consolidated = f"{consolidated}\n\n{followup}"
+
+        conversation_history.append(
+            {"role": "assistant", "content": consolidated}
+        )
+
+        return {
+            "content": consolidated,
+            "agent": self.name,
+            "metadata": {
+                "intent": routing.get("intent", ""),
+                "routed_to": routing.get("agents", []),
+            },
+            "pending_action": new_pending,
+            "_streamed": False,
         }
 
     async def _handle_pending(

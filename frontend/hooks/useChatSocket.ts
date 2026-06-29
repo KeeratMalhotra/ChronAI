@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WebSocketClient } from "@/lib/ws";
 import { playAudioBase64 } from "@/lib/voice";
+import { fetchChatHistory } from "@/lib/api";
 
 export interface ChatMessage {
   id: string;
@@ -16,9 +17,13 @@ export interface ChatMessage {
 export type ConnectionState = "connecting" | "connected" | "disconnected";
 
 interface IncomingMessage {
-  type: "text" | "audio" | "status" | "error" | "task_update";
+  type: "text" | "audio" | "status" | "error" | "task_update" | "text_chunk" | "text_end" | "proactive_nudge";
   content: string;
   agent?: string;
+  message_id?: string;
+  notification_id?: string;
+  tier?: number;
+  action?: { label: string; kind: string } | null;
 }
 
 /**
@@ -78,10 +83,12 @@ export function useChatSocket({ accessToken, onAudio }: UseChatSocketOptions) {
   const [thinking, setThinking] = useState(false);
   const [statusLabel, setStatusLabel] = useState("");
   const [connection, setConnection] = useState<ConnectionState>("connecting");
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
   const wsRef = useRef<WebSocketClient | null>(null);
   const tokenRef = useRef(accessToken);
   const onAudioRef = useRef(onAudio);
+  const historyLoadedRef = useRef(false);
 
   useEffect(() => {
     tokenRef.current = accessToken;
@@ -96,8 +103,54 @@ export function useChatSocket({ accessToken, onAudio }: UseChatSocketOptions) {
     const ws = new WebSocketClient(wsUrl);
     wsRef.current = ws;
 
-    ws.on("open", () => setConnection("connected"));
-    ws.on("close", () => setConnection("disconnected"));
+    ws.on("open", () => {
+      setConnection("connected");
+
+      // Prevent duplicate history loads on reconnect within the same mount.
+      if (historyLoadedRef.current) {
+        setLoadingHistory(false);
+        return;
+      }
+
+      fetchChatHistory(tokenRef.current)
+        .then((history) => {
+          historyLoadedRef.current = true;
+          if (history.length > 0) {
+            const mapped: ChatMessage[] = history.map((msg) => ({
+              id: msg.id,
+              role: msg.role === "assistant" ? "ai" : "user",
+              content: msg.content,
+              timestamp: new Date(msg.timestamp).getTime(),
+              streaming: false,
+            }));
+            // Replace any existing messages with history to avoid duplicates,
+            // then append any messages the user may have queued (none expected
+            // since the composer is disabled while loadingHistory is true).
+            setMessages((prev) => {
+              // Keep only messages that were added during this session
+              // (i.e., messages sent after the socket opened). Since the
+              // composer is gated by loadingHistory, prev should be empty.
+              return [...mapped, ...prev];
+            });
+          }
+        })
+        .catch(() => {
+          historyLoadedRef.current = true;
+          // History fetch failed silently - user can still chat
+        })
+        .finally(() => {
+          setLoadingHistory(false);
+        });
+    });
+    ws.on("close", () => {
+      setConnection("disconnected");
+      // Finalize any messages still in streaming state. If the WebSocket
+      // closes between text_chunk and text_end frames, the message would
+      // otherwise remain in streaming:true state permanently.
+      setMessages((prev) =>
+        prev.map((m) => (m.streaming ? { ...m, streaming: false } : m))
+      );
+    });
 
     ws.on("message", (data: IncomingMessage) => {
       if (data.type === "text" || data.type === "task_update") {
@@ -113,6 +166,37 @@ export function useChatSocket({ accessToken, onAudio }: UseChatSocketOptions) {
         ]);
         setThinking(false);
         setStatusLabel("");
+      } else if (data.type === "text_chunk") {
+        const messageId = data.message_id || "";
+        setMessages((prev) => {
+          const existing = prev.find((m) => m.id === messageId);
+          if (existing) {
+            return prev.map((m) =>
+              m.id === messageId
+                ? { ...m, content: m.content + data.content }
+                : m
+            );
+          }
+          return [
+            ...prev,
+            {
+              id: messageId,
+              role: "ai" as const,
+              content: data.content,
+              timestamp: Date.now(),
+              streaming: true,
+            },
+          ];
+        });
+        setThinking(false);
+        setStatusLabel("");
+      } else if (data.type === "text_end") {
+        const messageId = data.message_id || "";
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId ? { ...m, streaming: false } : m
+          )
+        );
       } else if (data.type === "status") {
         setThinking(true);
         setStatusLabel(humanizeStatus(data.content));
@@ -132,6 +216,19 @@ export function useChatSocket({ accessToken, onAudio }: UseChatSocketOptions) {
       } else if (data.type === "audio") {
         if (onAudioRef.current) onAudioRef.current(data.content);
         else playAudioBase64(data.content);
+      } else if (data.type === "proactive_nudge") {
+        // Don't add nudges as chat messages. Instead, dispatch a window event
+        // so ProactiveListener can surface them as notifications.
+        window.dispatchEvent(
+          new CustomEvent("chronai-proactive-nudge", {
+            detail: {
+              content: data.content,
+              notification_id: data.notification_id,
+              tier: data.tier,
+              action: data.action,
+            },
+          })
+        );
       }
     });
 
@@ -184,5 +281,6 @@ export function useChatSocket({ accessToken, onAudio }: UseChatSocketOptions) {
     send,
     finishStreaming,
     hasMessages: messages.length > 0,
+    loadingHistory,
   };
 }

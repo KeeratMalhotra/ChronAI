@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Add persistent conversation storage: ChatMessage model, MessageRepository with Firestore subcollection users/{user_id}/messages, and a REST endpoint to fetch history. Integrate persistence into the WebSocket handler so every message is saved and history is loaded on connect.",
+  "status": "completed",
+  "steps": [
+    "In backend/app/db/models.py, add a ChatMessage Pydantic model with fields: id (str), user_id (str), role (str - 'user' or 'assistant'), content (str), message_id (str, for client-generated IDs), timestamp (datetime, default utcnow). Do NOT modify the existing Conversation model.",
+    "In backend/app/db/repositories.py, add a MessageRepository class that stores messages as a flat subcollection 'users/{user_id}/messages' in Firestore. Methods: (1) save_message(user_id, role, content, message_id) - creates a doc with auto-gen ID, stores all fields + timestamp. (2) get_recent_messages(user_id, limit=50) - queries the subcollection ordered by timestamp descending, returns list of ChatMessage sorted oldest-first for context. (3) get_history(user_id, limit=50) - same as get_recent_messages but returns dicts suitable for the REST endpoint (id, role, content, timestamp as ISO string).",
+    "Create backend/app/api/conversations.py as a new APIRouter (prefix='/api/conversations', tags=['conversations']). Add GET /api/conversations/history endpoint that accepts auth_token query param, verifies auth with verify_google_token(), extracts user_id from user['sub'], calls MessageRepository.get_history(user_id, limit), returns {messages: [...]}. Follow the pattern from backend/app/api/memory.py for auth extraction.",
+    "In backend/app/main.py, register the new conversations router (import and include_router). In the websocket_chat handler: (a) After connected_user_id is set, load recent messages from Firestore via MessageRepository.get_recent_messages(connected_user_id, limit=50) and set conversation_history to those messages (as role/content dicts). (b) After each user message is processed by the orchestrator, persist both the user message and the assistant response using MessageRepository.save_message(). Keep the in-memory conversation_history list working as before - just also persist.",
+    "The orchestrator in backend/app/agents/orchestrator.py already mutates conversation_history in place (appending user + assistant messages). The persistence calls should happen in main.py AFTER orchestrator.execute() returns, using the last 2 entries from conversation_history (user msg + assistant response)."
+  ],
+  "acceptance_criteria": [
+    "ChatMessage model exists in models.py with correct fields",
+    "MessageRepository has save_message, get_recent_messages, and get_history methods",
+    "GET /api/conversations/history endpoint returns messages for authenticated users",
+    "WebSocket handler loads history on connect and persists messages on each exchange",
+    "Existing chat functionality is not broken - orchestrator still gets conversation_history",
+    "Context window is limited to last 50 messages for Gemini"
+  ],
+  "verification": [
+    "Run: cd /projects/sandbox/ChronAI/frontend && pnpm build (should still pass)",
+    "Verify Python files have no syntax errors: python3 -c \"import ast; ast.parse(open('backend/app/db/models.py').read()); ast.parse(open('backend/app/db/repositories.py').read()); ast.parse(open('backend/app/main.py').read()); ast.parse(open('backend/app/api/conversations.py').read())\"",
+    "Verify imports resolve structurally: python3 -c \"import sys; sys.path.insert(0, 'backend'); from app.db.models import ChatMessage; from app.db.repositories import MessageRepository\""
+  ],
+  "blocked_reason": null,
+  "findings": "All verification steps passed. Python syntax OK, imports resolve, frontend build and lint clean. Persistence uses best-effort pattern (logger.warning on failure, never breaks chat flow). The _persist_exchange helper extracts last 2 conversation_history entries after orchestrator mutates them in place."
+}

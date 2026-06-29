@@ -96,21 +96,21 @@ export default function AIChatPanel({
                 <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Sparkles size={16} className="text-accent-500" />
-                    <span className="text-sm font-semibold text-[var(--text-primary)]">
+                    <span className="text-sm font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]">
                       AI Assistant
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={onAttach}
-                      className="rounded-md p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+                      className="rounded-md p-1.5 text-[var(--text-tertiary)] dark:text-[#847e76] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4]"
                       title="Attach to side panel"
                     >
                       <Minimize2 size={14} />
                     </button>
                     <button
                       onClick={onClose}
-                      className="rounded-md p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+                      className="rounded-md p-1.5 text-[var(--text-tertiary)] dark:text-[#847e76] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4]"
                     >
                       <X size={16} />
                     </button>
@@ -135,7 +135,7 @@ export default function AIChatPanel({
                         key={suggestion}
                         type="button"
                         onClick={() => handleSuggestionClick(suggestion)}
-                        className="inline-flex items-center rounded-full bg-[var(--surface-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] cursor-pointer transition-colors hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]"
+                        className="inline-flex items-center rounded-full bg-[var(--surface-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[#a8a39c] cursor-pointer transition-colors hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4]"
                       >
                         {suggestion}
                       </button>
@@ -184,7 +184,7 @@ export default function AIChatPanel({
             >
               <div className="flex items-center gap-2">
                 <Sparkles size={16} className="text-accent-500" />
-                <span className="text-sm font-semibold text-[var(--text-primary)]">
+                <span className="text-sm font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]">
                   AI Assistant
                 </span>
               </div>
@@ -192,7 +192,7 @@ export default function AIChatPanel({
                 {/* Re-attach button */}
                 <button
                   onClick={onAttach}
-                  className="rounded-md p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+                  className="rounded-md p-1.5 text-[var(--text-tertiary)] dark:text-[#847e76] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4]"
                   title="Attach to side panel"
                 >
                   <Minimize2 size={14} />
@@ -200,7 +200,7 @@ export default function AIChatPanel({
                 {/* Close button */}
                 <button
                   onClick={onClose}
-                  className="rounded-md p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+                  className="rounded-md p-1.5 text-[var(--text-tertiary)] dark:text-[#847e76] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4]"
                 >
                   <X size={16} />
                 </button>
@@ -225,7 +225,7 @@ export default function AIChatPanel({
                     key={suggestion}
                     type="button"
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="inline-flex items-center rounded-full bg-[var(--surface-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] cursor-pointer transition-colors hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]"
+                    className="inline-flex items-center rounded-full bg-[var(--surface-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[#a8a39c] cursor-pointer transition-colors hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4]"
                   >
                     {suggestion}
                   </button>
@@ -250,7 +250,7 @@ export default function AIChatPanel({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[80] bg-black/30 backdrop-blur-[2px]"
+            className="fixed top-14 inset-x-0 bottom-0 z-[80] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
 
@@ -260,7 +260,7 @@ export default function AIChatPanel({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 400, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed inset-0 md:inset-auto md:right-0 md:top-0 z-[81] flex h-full md:w-[400px] md:max-w-[90vw] flex-col border-l border-[var(--border)] bg-[var(--bg)] shadow-2xl"
+            className="fixed top-14 bottom-0 left-0 right-0 md:left-auto md:right-0 md:top-14 z-[81] flex h-auto md:w-[400px] md:max-w-[90vw] flex-col border-l border-[var(--border)] bg-[var(--bg)] shadow-2xl"
             role="dialog"
             aria-modal="true"
             aria-label="AI Assistant"
@@ -269,7 +269,7 @@ export default function AIChatPanel({
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-5 py-4">
               <div className="flex items-center gap-2">
                 <Sparkles size={16} className="text-accent-500" />
-                <span className="text-sm font-semibold text-[var(--text-primary)]">
+                <span className="text-sm font-semibold text-[var(--text-primary)] dark:text-[#ece9e4]">
                   AI Assistant
                 </span>
               </div>
@@ -277,7 +277,7 @@ export default function AIChatPanel({
                 {/* Detach button */}
                 <button
                   onClick={onDetach}
-                  className="rounded-md p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+                  className="rounded-md p-1.5 text-[var(--text-tertiary)] dark:text-[#847e76] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4]"
                   title="Detach as floating window"
                 >
                   <Maximize2 size={14} />
@@ -285,7 +285,7 @@ export default function AIChatPanel({
                 {/* Close button */}
                 <button
                   onClick={onClose}
-                  className="rounded-md p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+                  className="rounded-md p-1.5 text-[var(--text-tertiary)] dark:text-[#847e76] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4]"
                 >
                   <X size={16} />
                 </button>
@@ -310,7 +310,7 @@ export default function AIChatPanel({
                     key={suggestion}
                     type="button"
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="inline-flex items-center rounded-full bg-[var(--surface-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] cursor-pointer transition-colors hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]"
+                    className="inline-flex items-center rounded-full bg-[var(--surface-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[#a8a39c] cursor-pointer transition-colors hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] dark:hover:text-[#ece9e4]"
                   >
                     {suggestion}
                   </button>

@@ -23,6 +23,7 @@ Design principles:
 import asyncio
 import json
 import logging
+import math
 import uuid
 from collections import Counter
 from datetime import datetime, timedelta
@@ -55,6 +56,135 @@ VALID_OBSERVATION_TYPES = {
 # has accumulated.
 _DISTILL_MIN_OBSERVATIONS = 4
 _DISTILL_INTERVAL = timedelta(hours=6)
+
+
+# ---------------------------------------------------------------------------
+# Embedding & semantic retrieval (RAG)
+# ---------------------------------------------------------------------------
+
+# Cache the embedding model at module level to avoid re-instantiation on every call.
+_embedding_model = None
+
+# Minimum cosine similarity to include a memory in results (filters noise).
+_SIMILARITY_THRESHOLD = 0.3
+
+
+def _get_embedding_model():
+    """Return a cached TextEmbeddingModel instance (lazy initialization)."""
+    global _embedding_model
+    if _embedding_model is None:
+        from vertexai.language_models import TextEmbeddingModel
+        _embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
+    return _embedding_model
+
+
+async def _generate_embedding(
+    text: str, task_type: str = "RETRIEVAL_DOCUMENT"
+) -> list[float] | None:
+    """Generate a text embedding using Vertex AI text-embedding-004.
+
+    Args:
+        text: The text to embed.
+        task_type: One of "RETRIEVAL_DOCUMENT" (for stored observations) or
+            "RETRIEVAL_QUERY" (for search queries).
+
+    Returns:
+        A 768-dimensional float list, or None on any failure (graceful degradation).
+    """
+    try:
+        from vertexai.language_models import TextEmbeddingInput
+
+        model = _get_embedding_model()
+        inputs = [TextEmbeddingInput(text, task_type)]
+        # model.get_embeddings() is a synchronous/blocking SDK call that performs
+        # an HTTP request to Vertex AI. Wrap in asyncio.to_thread() so it runs
+        # in a thread pool and does not block the event loop on the retrieval path.
+        embeddings = await asyncio.to_thread(model.get_embeddings, inputs)
+        if embeddings and len(embeddings) > 0:
+            return embeddings[0].values
+        return None
+    except Exception as e:
+        logger.warning(f"[memory] _generate_embedding failed: {e}")
+        return None
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Compute cosine similarity between two vectors using pure Python.
+
+    Returns 0.0 if either vector has zero magnitude.
+    """
+    if len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    mag_a = math.sqrt(sum(x * x for x in a))
+    mag_b = math.sqrt(sum(x * x for x in b))
+    if mag_a == 0.0 or mag_b == 0.0:
+        return 0.0
+    return dot / (mag_a * mag_b)
+
+
+def _observation_text_repr(obs: dict) -> str:
+    """Build a short text representation of an observation for embedding/display."""
+    obs_type = obs.get("type", "observation")
+    title = obs.get("title", "")
+    hour = obs.get("hour")
+    parts = [obs_type]
+    if title:
+        parts.append(title)
+    if hour is not None:
+        parts.append(f"at {hour}h")
+    return ": ".join(parts[:2]) + (f" {parts[2]}" if len(parts) > 2 else "")
+
+
+async def retrieve_relevant_memories(
+    user_id: str, query: str, top_k: int = 5
+) -> list[str]:
+    """Retrieve the most semantically relevant observations for a query.
+
+    Uses cosine similarity between the query embedding and stored observation
+    embeddings (fetched from the embeddings subcollection). Returns up to
+    ``top_k`` observation text representations that exceed the similarity
+    threshold.
+
+    Graceful degradation: returns an empty list if embedding fails, the user
+    has no memory, or no observations have embeddings.
+    """
+    if not user_id or not query:
+        return []
+    try:
+        query_embedding = await _generate_embedding(query, task_type="RETRIEVAL_QUERY")
+        if query_embedding is None:
+            return []
+
+        # Fetch embeddings from the dedicated subcollection.
+        from app.db.firestore import get_db
+
+        db = get_db()
+        embeddings_coll = (
+            db.collection("users").document(user_id).collection("embeddings")
+        )
+
+        scored: list[tuple[float, str]] = []
+        async for doc in embeddings_coll.stream():
+            data = doc.to_dict()
+            obs_embedding = data.get("embedding")
+            text_repr = data.get("text_repr", "")
+            if not obs_embedding or not isinstance(obs_embedding, list):
+                continue
+            if not text_repr:
+                continue
+            sim = _cosine_similarity(query_embedding, obs_embedding)
+            if sim >= _SIMILARITY_THRESHOLD:
+                scored.append((sim, text_repr))
+
+        if not scored:
+            return []
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [text for _, text in scored[:top_k]]
+    except Exception as e:
+        logger.warning(f"[memory] retrieve_relevant_memories failed: {e}")
+        return []
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +254,32 @@ def _normalize_observation(
     return obs
 
 
+async def _store_embedding_in_subcollection(
+    user_id: str, observation_index: int, embedding: list[float], text_repr: str
+) -> None:
+    """Store an embedding in the user's embeddings subcollection.
+
+    This is a best-effort write; failures are logged but never propagated.
+    Each document in the subcollection holds one observation's embedding,
+    its text representation, and the observation index for reference.
+    """
+    try:
+        from app.db.firestore import get_db
+
+        db = get_db()
+        embeddings_coll = (
+            db.collection("users").document(user_id).collection("embeddings")
+        )
+        doc_ref = embeddings_coll.document()
+        await doc_ref.set({
+            "observation_index": observation_index,
+            "embedding": embedding,
+            "text_repr": text_repr,
+        })
+    except Exception as e:
+        logger.warning(f"[memory] _store_embedding_in_subcollection failed: {e}")
+
+
 async def record_observation(
     user_id: str,
     obs_type: str,
@@ -135,6 +291,9 @@ async def record_observation(
     This is the single entry point used by the API and by agents. It never
     raises: any failure is logged and ``None`` is returned so the caller's main
     flow is unaffected.
+
+    Embeddings are generated asynchronously (fire-and-forget) and stored in a
+    separate Firestore subcollection to avoid bloating the main memory document.
 
     Args:
         user_id: The user's ID.
@@ -150,11 +309,34 @@ async def record_observation(
         return None
     try:
         observation = _normalize_observation(obs_type, data or {}, timestamp)
+
+        # Store the observation without embedding in the main document.
         memory = await MemoryRepository.record_observation(user_id, observation)
-        # Recompute deterministic structure synchronously — it's cheap and keeps
+
+        # Recompute deterministic structure synchronously -- it's cheap and keeps
         # stats accurate even when Gemini is unavailable.
         _recompute(memory)
         await MemoryRepository.save_memory(memory)
+
+        # Fire-and-forget: generate embedding and store in subcollection.
+        # This avoids adding Vertex AI latency to the write path.
+        text_repr = _observation_text_repr(observation)
+        observation_index = len(memory.observations) - 1
+
+        async def _embed_and_store():
+            try:
+                embedding = await _generate_embedding(
+                    text_repr, task_type="RETRIEVAL_DOCUMENT"
+                )
+                if embedding is not None:
+                    await _store_embedding_in_subcollection(
+                        user_id, observation_index, embedding, text_repr
+                    )
+            except Exception as e:
+                logger.warning(f"[memory] background embedding failed: {e}")
+
+        asyncio.ensure_future(_embed_and_store())
+
         return memory
     except Exception as e:  # pragma: no cover - defensive
         logger.warning(f"[memory] record_observation failed: {e}")
