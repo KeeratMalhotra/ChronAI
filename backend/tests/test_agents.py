@@ -1156,6 +1156,98 @@ class TestParallelAgentDispatch:
             assert s["type"] == "status"
             assert s["content"]  # non-empty
 
+    async def test_multi_agent_dispatch_partial_failure(self):
+        """One agent failing should not crash the entire multi-agent turn."""
+        from app.agents.base import AgentRegistry
+
+        async def execute_success(task):
+            return {"content": "Success result", "agent": "agent_ok"}
+
+        async def execute_failure(task):
+            raise RuntimeError("Agent exploded")
+
+        mock_agent_ok = AsyncMock()
+        mock_agent_ok.execute = AsyncMock(side_effect=execute_success)
+        mock_agent_fail = AsyncMock()
+        mock_agent_fail.execute = AsyncMock(side_effect=execute_failure)
+
+        AgentRegistry._agents["agent_ok"] = mock_agent_ok
+        AgentRegistry._agents["agent_fail"] = mock_agent_fail
+
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps({
+                "intent": "multi_intent",
+                "agents": ["agent_ok", "agent_fail"],
+                "tasks": [
+                    {"agent": "agent_ok", "instruction": "Do OK thing"},
+                    {"agent": "agent_fail", "instruction": "Do failing thing"},
+                ],
+                "direct_response": None,
+            })
+        )
+
+        # Should NOT raise -- partial results are returned gracefully
+        result = await self.agent.execute({
+            "message": "Do both things",
+            "auth_token": "test-token",
+            "conversation_history": [],
+        })
+
+        # The successful agent's content should still be present
+        assert "Success result" in result["content"]
+        # Both agents were called
+        mock_agent_ok.execute.assert_called_once()
+        mock_agent_fail.execute.assert_called_once()
+
+    async def test_multi_agent_streaming_partial_failure(self):
+        """Partial failure in execute_streaming() multi-agent path is graceful."""
+        from app.agents.base import AgentRegistry
+
+        async def execute_success(task):
+            return {"content": "Streaming success", "agent": "agent_ok"}
+
+        async def execute_failure(task):
+            raise ValueError("Streaming agent crashed")
+
+        mock_agent_ok = AsyncMock()
+        mock_agent_ok.execute = AsyncMock(side_effect=execute_success)
+        mock_agent_fail = AsyncMock()
+        mock_agent_fail.execute = AsyncMock(side_effect=execute_failure)
+
+        AgentRegistry._agents["agent_ok"] = mock_agent_ok
+        AgentRegistry._agents["agent_fail"] = mock_agent_fail
+
+        self.mock_model.generate_content.return_value = MagicMock(
+            text=json.dumps({
+                "intent": "multi_intent",
+                "agents": ["agent_ok", "agent_fail"],
+                "tasks": [
+                    {"agent": "agent_ok", "instruction": "Do OK"},
+                    {"agent": "agent_fail", "instruction": "Do fail"},
+                ],
+                "direct_response": None,
+            })
+        )
+
+        chunks = []
+
+        async def send_chunk(text):
+            chunks.append(text)
+
+        # Should NOT raise
+        result = await self.agent.execute_streaming(
+            {
+                "message": "Do both",
+                "auth_token": "test-token",
+                "conversation_history": [],
+            },
+            send_chunk=send_chunk,
+        )
+
+        assert "Streaming success" in result["content"]
+        mock_agent_ok.execute.assert_called_once()
+        mock_agent_fail.execute.assert_called_once()
+
     async def test_multi_agent_streaming_dispatch_runs_concurrently(self):
         """Parallel dispatch also works in execute_streaming() multi-agent path."""
         import asyncio

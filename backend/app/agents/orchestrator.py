@@ -223,9 +223,14 @@ class OrchestratorAgent(AgentBase):
                     )
                 )
 
-        results = list(await asyncio.gather(*coroutines)) if coroutines else []
-        for result in results:
-            logger.info(f"[orchestrator] '{result.get('agent', '?')}' responded with {len(result.get('content', ''))} chars")
+        raw_results = list(await asyncio.gather(*coroutines, return_exceptions=True)) if coroutines else []
+        results = []
+        for r in raw_results:
+            if isinstance(r, BaseException):
+                logger.error(f"[orchestrator] Agent failed during parallel dispatch: {r}")
+            else:
+                logger.info(f"[orchestrator] '{r.get('agent', '?')}' responded with {len(r.get('content', ''))} chars")
+                results.append(r)
 
         # An agent may ask for clarification or confirmation; capture the first
         # pending action so the caller can remember it for the next turn.
@@ -446,7 +451,13 @@ class OrchestratorAgent(AgentBase):
                     )
                 )
 
-        results = list(await asyncio.gather(*coroutines)) if coroutines else []
+        raw_results = list(await asyncio.gather(*coroutines, return_exceptions=True)) if coroutines else []
+        results = []
+        for r in raw_results:
+            if isinstance(r, BaseException):
+                logger.error(f"[orchestrator] Agent failed during streaming parallel dispatch: {r}")
+            else:
+                results.append(r)
 
         new_pending = next(
             (r.get("pending_action") for r in results if r.get("pending_action")),
