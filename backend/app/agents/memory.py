@@ -96,7 +96,10 @@ async def _generate_embedding(
 
         model = _get_embedding_model()
         inputs = [TextEmbeddingInput(text, task_type)]
-        embeddings = model.get_embeddings(inputs)
+        # model.get_embeddings() is a synchronous/blocking SDK call that performs
+        # an HTTP request to Vertex AI. Wrap in asyncio.to_thread() so it runs
+        # in a thread pool and does not block the event loop on the retrieval path.
+        embeddings = await asyncio.to_thread(model.get_embeddings, inputs)
         if embeddings and len(embeddings) > 0:
             return embeddings[0].values
         return None
