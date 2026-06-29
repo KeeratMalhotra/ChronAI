@@ -217,26 +217,51 @@ async def _persist_exchange(
     """Persist the latest user + assistant messages from conversation_history.
 
     Called after the orchestrator mutates conversation_history in place.
-    Extracts the last two entries (user message then assistant response)
-    and writes them to Firestore. Best-effort: never raises.
+    Walks backward through the history to find the most recent assistant
+    message and its preceding user message, validating roles before writing.
+    Best-effort: never raises.
+
+    NOTE: The subcollection will grow unbounded per user. A TTL policy or
+    periodic pruning job should be added in the future to manage storage costs.
     """
-    if not user_id or len(conversation_history) < 2:
+    if not user_id or len(conversation_history) < 1:
         return
     try:
-        # The orchestrator appends user then assistant in order.
-        user_msg = conversation_history[-2]
-        assistant_msg = conversation_history[-1]
-        if user_msg.get("role") == "user":
+        # Walk backward to find the latest assistant message.
+        assistant_msg = None
+        assistant_idx = None
+        for i in range(len(conversation_history) - 1, -1, -1):
+            if conversation_history[i].get("role") == "assistant":
+                assistant_msg = conversation_history[i]
+                assistant_idx = i
+                break
+
+        if assistant_msg is None:
+            # No assistant message found - nothing to persist.
+            return
+
+        # Look for the nearest preceding user message.
+        user_msg = None
+        if assistant_idx is not None and assistant_idx > 0:
+            for i in range(assistant_idx - 1, -1, -1):
+                if conversation_history[i].get("role") == "user":
+                    user_msg = conversation_history[i]
+                    break
+
+        # Persist the user message if found.
+        if user_msg and user_msg.get("content"):
             await MessageRepository.save_message(
                 user_id=user_id,
                 role="user",
-                content=user_msg.get("content", ""),
+                content=user_msg["content"],
             )
-        if assistant_msg.get("role") == "assistant":
+
+        # Persist the assistant message.
+        if assistant_msg.get("content"):
             await MessageRepository.save_message(
                 user_id=user_id,
                 role="assistant",
-                content=assistant_msg.get("content", ""),
+                content=assistant_msg["content"],
             )
     except Exception as e:
         logger.warning(f"Failed to persist chat exchange for {user_id}: {e}")

@@ -70,7 +70,7 @@ export default function ChatExperience({
               onSend={(v) => send(v, "chat")}
               onVoice={() => setVoiceActive(false)}
               centered={false}
-              disabled={connection === "disconnected"}
+              disabled={connection === "disconnected" || loadingHistory}
             />
           </div>
         </>
@@ -97,7 +97,7 @@ export default function ChatExperience({
               onSend={(v) => send(v, "chat")}
               onVoice={() => setVoiceActive(true)}
               centered={false}
-              disabled={connection === "disconnected"}
+              disabled={connection === "disconnected" || loadingHistory}
             />
           </div>
         </>
@@ -132,7 +132,7 @@ export default function ChatExperience({
                   onSend={(v) => send(v, "chat")}
                   onVoice={() => setVoiceActive(true)}
                   centered={true}
-                  disabled={connection === "disconnected"}
+                  disabled={connection === "disconnected" || loadingHistory}
                 />
               </div>
             </motion.div>

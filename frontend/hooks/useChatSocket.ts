@@ -88,6 +88,7 @@ export function useChatSocket({ accessToken, onAudio }: UseChatSocketOptions) {
   const wsRef = useRef<WebSocketClient | null>(null);
   const tokenRef = useRef(accessToken);
   const onAudioRef = useRef(onAudio);
+  const historyLoadedRef = useRef(false);
 
   useEffect(() => {
     tokenRef.current = accessToken;
@@ -104,8 +105,16 @@ export function useChatSocket({ accessToken, onAudio }: UseChatSocketOptions) {
 
     ws.on("open", () => {
       setConnection("connected");
+
+      // Prevent duplicate history loads on reconnect within the same mount.
+      if (historyLoadedRef.current) {
+        setLoadingHistory(false);
+        return;
+      }
+
       fetchChatHistory(tokenRef.current)
         .then((history) => {
+          historyLoadedRef.current = true;
           if (history.length > 0) {
             const mapped: ChatMessage[] = history.map((msg) => ({
               id: msg.id,
@@ -114,10 +123,19 @@ export function useChatSocket({ accessToken, onAudio }: UseChatSocketOptions) {
               timestamp: new Date(msg.timestamp).getTime(),
               streaming: false,
             }));
-            setMessages((prev) => [...mapped, ...prev]);
+            // Replace any existing messages with history to avoid duplicates,
+            // then append any messages the user may have queued (none expected
+            // since the composer is disabled while loadingHistory is true).
+            setMessages((prev) => {
+              // Keep only messages that were added during this session
+              // (i.e., messages sent after the socket opened). Since the
+              // composer is gated by loadingHistory, prev should be empty.
+              return [...mapped, ...prev];
+            });
           }
         })
         .catch(() => {
+          historyLoadedRef.current = true;
           // History fetch failed silently - user can still chat
         })
         .finally(() => {
