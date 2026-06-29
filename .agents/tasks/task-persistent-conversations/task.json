@@ -1,0 +1,7 @@
+{
+  "task_id": "task-persistent-conversations",
+  "task_description": "Implement persistent conversations by saving chat messages to Firestore and loading them when the user reconnects. Backend: ChatMessage model, MessageRepository, REST endpoint, WebSocket handler integration. Frontend: fetch history on connect, show loading state, display seamless thread.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

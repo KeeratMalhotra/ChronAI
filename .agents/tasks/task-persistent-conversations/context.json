@@ -1,0 +1,35 @@
+{
+  "project_type": "Full-stack app: Python FastAPI backend + Next.js 15 frontend",
+  "language": "Python (backend), TypeScript (frontend)",
+  "build_system": "pnpm for frontend, pip for backend. No Makefile or brazil.",
+  "test_framework": "pytest for backend (backend/tests/), jest for frontend (passWithNoTests)",
+  "build_command": "cd frontend && pnpm build",
+  "test_command": "cd frontend && pnpm lint",
+  "verification_instructions": "1. Run pnpm build in frontend to confirm TypeScript compiles. 2. Run pnpm lint in frontend.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "cd frontend && pnpm install",
+  "environment_constraints": "OPEN_INTERNET network. Firestore client requires credentials for live testing but code can be validated structurally. Backend cannot be run without GCP/Firestore credentials.",
+  "contribution_requirements": "Commit but do NOT push. Verify frontend builds.",
+  "key_patterns": {
+    "backend_models": "Pydantic BaseModel classes in backend/app/db/models.py with Field defaults",
+    "backend_repositories": "Async class-based repos in backend/app/db/repositories.py using get_db() for Firestore. Pattern: classmethod async, collection stored as COLLECTION class var. Subcollections supported via db.collection('users').document(uid).collection('messages').",
+    "backend_api_routers": "FastAPI APIRouter with prefix, tag. Auth via verify_google_token(). Query param auth_token or Authorization header pattern (see memory.py _extract_token).",
+    "frontend_hooks": "Custom hooks in frontend/hooks/ with 'use' prefix. useChatSocket manages WebSocket + messages state.",
+    "frontend_api": "REST helpers in frontend/lib/api.ts using getApiBase() for URL derivation.",
+    "websocket_handler": "backend/app/main.py websocket_chat() - per-connection conversation_history list passed to orchestrator. conversation_history is mutated in-place by orchestrator (appends user + assistant messages).",
+    "conversation_history_format": "List of {role: 'user'|'assistant', content: str} dicts used by orchestrator for Gemini context."
+  },
+  "relevant_files": [
+    "backend/app/db/models.py",
+    "backend/app/db/repositories.py",
+    "backend/app/db/firestore.py",
+    "backend/app/main.py",
+    "backend/app/api/memory.py",
+    "backend/app/auth.py",
+    "frontend/hooks/useChatSocket.ts",
+    "frontend/components/chat/ChatExperience.tsx",
+    "frontend/lib/api.ts",
+    "frontend/lib/ws.ts"
+  ],
+  "directory_structure": "backend/app/ (FastAPI app), backend/app/db/ (models, repos, firestore), backend/app/api/ (route modules), backend/app/agents/ (AI agents), frontend/ (Next.js 15), frontend/hooks/ (React hooks), frontend/components/chat/ (chat UI), frontend/lib/ (utilities)"
+}

@@ -85,6 +85,21 @@ class Conversation(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class ChatMessage(BaseModel):
+    """A single persisted chat message in the user's conversation history.
+
+    Stored as documents in the Firestore subcollection
+    ``users/{user_id}/messages``.
+    """
+
+    id: str = ""
+    user_id: str = ""
+    role: str = ""  # "user" or "assistant"
+    content: str = ""
+    message_id: str = ""  # Client-generated ID for deduplication
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
 class Notification(BaseModel):
     """A persisted notification in the user's inbox.
 

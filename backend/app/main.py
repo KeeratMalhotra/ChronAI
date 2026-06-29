@@ -37,11 +37,13 @@ from app.api.integrations import router as integrations_router
 from app.api.memory import router as memory_router
 from app.api.notifications import router as notifications_router
 from app.api.proactive import router as proactive_router
+from app.api.conversations import router as conversations_router
 from app.auth import verify_google_token
 from app.config import settings
 from app.db.firestore import init_firestore
 from app.db.repositories import HabitRepository
 from app.db.models import Habit
+from app.db.repositories import MessageRepository
 from app.mcp.client import MCPClient
 from app.scheduler.proactive import start_proactive_scheduler, stop_proactive_scheduler, run_nudge_check
 from app.ws_manager import connection_manager
@@ -206,6 +208,38 @@ app.include_router(integrations_router)
 app.include_router(memory_router)
 app.include_router(notifications_router)
 app.include_router(proactive_router)
+app.include_router(conversations_router)
+
+
+async def _persist_exchange(
+    user_id: str, conversation_history: list[dict]
+) -> None:
+    """Persist the latest user + assistant messages from conversation_history.
+
+    Called after the orchestrator mutates conversation_history in place.
+    Extracts the last two entries (user message then assistant response)
+    and writes them to Firestore. Best-effort: never raises.
+    """
+    if not user_id or len(conversation_history) < 2:
+        return
+    try:
+        # The orchestrator appends user then assistant in order.
+        user_msg = conversation_history[-2]
+        assistant_msg = conversation_history[-1]
+        if user_msg.get("role") == "user":
+            await MessageRepository.save_message(
+                user_id=user_id,
+                role="user",
+                content=user_msg.get("content", ""),
+            )
+        if assistant_msg.get("role") == "assistant":
+            await MessageRepository.save_message(
+                user_id=user_id,
+                role="assistant",
+                content=assistant_msg.get("content", ""),
+            )
+    except Exception as e:
+        logger.warning(f"Failed to persist chat exchange for {user_id}: {e}")
 
 
 @app.websocket("/ws")
@@ -268,6 +302,20 @@ async def websocket_chat(websocket: WebSocket):
                 if user_id:
                     connected_user_id = user_id
                     connection_manager.connect(user_id, websocket)
+                    # Load persistent conversation history from Firestore
+                    try:
+                        stored_messages = await MessageRepository.get_recent_messages(
+                            user_id, limit=50
+                        )
+                        conversation_history.clear()
+                        for msg in stored_messages:
+                            conversation_history.append(
+                                {"role": msg.role, "content": msg.content}
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to load conversation history for {user_id}: {e}"
+                        )
 
             # Route based on message type
             if msg_type == "voice":
@@ -287,6 +335,10 @@ async def websocket_chat(websocket: WebSocket):
 
                     # Persist any pending clarification for the next turn.
                     pending_action = result.get("pending_action")
+
+                    # Persist the exchange to Firestore (best-effort).
+                    if connected_user_id:
+                        await _persist_exchange(connected_user_id, conversation_history)
 
                     # Send text response first
                     await websocket.send_json(
@@ -347,6 +399,10 @@ async def websocket_chat(websocket: WebSocket):
                         # Persist any pending clarification for the next turn.
                         pending_action = result.get("pending_action")
 
+                        # Persist the exchange to Firestore (best-effort).
+                        if connected_user_id:
+                            await _persist_exchange(connected_user_id, conversation_history)
+
                         if result.get("_streamed"):
                             # Check if chunks were actually sent to the client.
                             # If generate() failed/timed out and returned the
@@ -396,6 +452,10 @@ async def websocket_chat(websocket: WebSocket):
 
                         # Persist any pending clarification for the next turn.
                         pending_action = result.get("pending_action")
+
+                        # Persist the exchange to Firestore (best-effort).
+                        if connected_user_id:
+                            await _persist_exchange(connected_user_id, conversation_history)
 
                         # Determine response type
                         response_type = "text"
