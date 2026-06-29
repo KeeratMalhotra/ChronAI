@@ -1,0 +1,7 @@
+# Ignore frontend and unnecessary files for backend deployment
+frontend/node_modules/
+frontend/.next/
+frontend/pnpm-lock.yaml
+frontend/package-lock.json
+.git/
+.agents/
