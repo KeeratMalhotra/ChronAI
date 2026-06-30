@@ -21,7 +21,9 @@ export async function middleware(request: NextRequest) {
     if (!token) {
       const url = request.nextUrl.clone();
       url.pathname = "/";
-      return NextResponse.redirect(url);
+      const response = NextResponse.redirect(url);
+      response.cookies.delete("haven-onboarding-complete");
+      return response;
     }
   }
 
@@ -30,7 +32,9 @@ export async function middleware(request: NextRequest) {
     if (!token) {
       const url = request.nextUrl.clone();
       url.pathname = "/";
-      return NextResponse.redirect(url);
+      const response = NextResponse.redirect(url);
+      response.cookies.delete("haven-onboarding-complete");
+      return response;
     }
   }
 
@@ -81,18 +85,17 @@ export async function middleware(request: NextRequest) {
           });
           return response;
         } else {
-          // API returned non-OK (e.g. 401, 500) — assume not onboarded, redirect
-          const url = request.nextUrl.clone();
-          url.pathname = "/onboarding";
-          return NextResponse.redirect(url);
+          // API returned non-OK (e.g. 401, 500) — fail OPEN to match the
+          // dashboard's client-side gate. The client gate remains the backstop,
+          // so a transient backend error / expired token won't strand an
+          // onboarded user on /onboarding.
+          return NextResponse.next();
         }
       } catch {
-        // Backend unreachable or timed out — assume not onboarded for safety.
-        // This prevents the dashboard flash. If user IS onboarded, the onboarding
-        // page will detect it client-side and redirect back to dashboard.
-        const url = request.nextUrl.clone();
-        url.pathname = "/onboarding";
-        return NextResponse.redirect(url);
+        // Backend unreachable or timed out — fail OPEN to match the dashboard's
+        // client-side gate. Letting the request through avoids stranding a
+        // fully-onboarded user on /onboarding during transient errors.
+        return NextResponse.next();
       }
     }
 
