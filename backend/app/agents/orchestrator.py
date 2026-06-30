@@ -49,7 +49,7 @@ ROUTING RULES (follow these strictly):
 10. ANY mention of "focus mode", "start focus", "deep work", "pomodoro", "focus session", "focus time" -> route to "scheduler" with instruction to start a focus session
 11. ANY mention of "find me time for", "when should I work on", "I need X hours for" -> route to "scheduler" with instruction to suggest time
 12. Questions ABOUT calendar/tasks/emails (e.g. "What's on my calendar?", "Do I have any tasks?") ARE routed, not answered directly.
-13. ANY mention of "presentation", "slides", "deck", "powerpoint", "create a presentation", "make slides" -> route to "planner" with instruction noting it is a slides/presentation request that should use the slides feature
+13. ANY mention of "presentation", "slides", "deck", "powerpoint", "create a presentation", "make slides" -> route to "slides" with instruction describing what presentation to create
 14. ONLY use direct_response for pure small talk: greetings ("hello", "hi", "hey"), thanks ("thank you", "thanks"), meta questions ("who are you", "what can you do", "what is Haven").
 15. When the user STATES they have an event/meeting/appointment ("I have X at Y", "there's X at Y") -> route to "scheduler" with instruction "Create event: [title], [time]". This IS a create request even though they didn't say "create" or "schedule".
 
@@ -76,8 +76,8 @@ EXAMPLES of correct routing:
 - "How was my week?" -> review with instruction "Generate weekly productivity review"
 - "Give me a weekly summary" -> review with instruction "Generate weekly productivity review"
 - "Show my productivity report" -> review with instruction "Generate weekly productivity review"
-- "Create a presentation for my project" -> planner with instruction "Slides/presentation request: create a presentation for my project"
-- "Make slides about the quarterly report" -> planner with instruction "Slides/presentation request: make slides about the quarterly report"
+- "Create a presentation for my project" -> slides with instruction "Create a presentation for my project"
+- "Make slides about the quarterly report" -> slides with instruction "Make slides about the quarterly report"
 - "What should I focus on?" -> priority with instruction "Prioritize the user's tasks and events"
 - "What's most important right now?" -> priority with instruction "Prioritize the user's tasks and events"
 - "Prioritize my tasks" -> priority with instruction "Rank tasks by urgency and importance"
