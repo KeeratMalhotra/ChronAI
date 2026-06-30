@@ -151,15 +151,34 @@ export function cancelListening(): void {
 }
 
 /**
+ * Options for {@link startListening}.
+ */
+export interface StartListeningOptions {
+  /**
+   * Called on every analyser frame with the live microphone amplitude,
+   * mapped into a perceptual 0..1 range. Useful for driving an
+   * audio-reactive UI (e.g. a glowing orb that swells with the voice).
+   * Emits 0 once when recording stops so the UI can settle.
+   */
+  onLevel?: (level: number) => void;
+}
+
+/**
  * Capture microphone audio and transcribe it via the backend Google Cloud
  * Speech-to-Text endpoint. Recording stops automatically after a short period
  * of silence (hands-free), when the max duration is hit, or when
  * stopListening() is called.
  *
  * @param authToken Optional Google OAuth token forwarded to the backend.
+ * @param options   Optional callbacks, e.g. {@link StartListeningOptions.onLevel}
+ *                  for live microphone amplitude. The first positional
+ *                  `authToken` argument is preserved for existing call sites.
  * @returns The recognized transcript (empty string if nothing was heard).
  */
-export function startListening(authToken?: string): Promise<string> {
+export function startListening(
+  authToken?: string,
+  options?: StartListeningOptions
+): Promise<string> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") {
       reject(new Error("Recording not available on server"));
@@ -206,6 +225,14 @@ export function startListening(authToken?: string): Promise<string> {
           silenceTimer = null;
           maxTimer = null;
           rafId = null;
+          // Let the UI settle its audio-reactive visuals back to rest.
+          if (options?.onLevel) {
+            try {
+              options.onLevel(0);
+            } catch {
+              /* no-op */
+            }
+          }
           if (audioCtx && audioCtx.state !== "closed") {
             audioCtx.close().catch(() => {});
           }
@@ -249,6 +276,16 @@ export function startListening(authToken?: string): Promise<string> {
               }
               const rms = Math.sqrt(sum / data.length);
               const elapsed = Date.now() - startedAt;
+
+              // Surface the live amplitude to the UI. RMS is typically
+              // ~0.02–0.3 for speech, so map it into a perceptual 0..1 range.
+              if (options?.onLevel) {
+                try {
+                  options.onLevel(Math.min(1, rms * 2.8));
+                } catch {
+                  /* callback errors must not break recording */
+                }
+              }
 
               if (rms > SILENCE_RMS_THRESHOLD) {
                 if (elapsed > MIN_SPEECH_MS) sawSpeech = true;
