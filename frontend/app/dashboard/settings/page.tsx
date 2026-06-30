@@ -599,6 +599,7 @@ function SettingsContent() {
       setCustomProfilePicture(base64);
       try {
         localStorage.setItem("chronai-profile-picture", base64);
+        window.dispatchEvent(new CustomEvent("chronai-profile-picture-changed"));
       } catch {
         // Handle QuotaExceededError gracefully
         setProfilePictureError("Failed to save image. File may be too large for local storage.");
@@ -612,6 +613,7 @@ function SettingsContent() {
   const handleRemoveProfilePicture = () => {
     setCustomProfilePicture(null);
     localStorage.removeItem("chronai-profile-picture");
+    window.dispatchEvent(new CustomEvent("chronai-profile-picture-changed"));
   };
 
   // --- Profile handlers ---

@@ -407,15 +407,17 @@ export default function OnboardingPage() {
                   : "border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] dark:text-[#a8a39c] hover:border-[var(--border)] hover:bg-[var(--surface-hover)]"
               }`}
             >
-              {active && (
-                <motion.span
-                  initial={{ scale: 0, rotate: -90 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={spring}
-                >
-                  <Check className="h-3.5 w-3.5" />
-                </motion.span>
-              )}
+              <motion.span
+                initial={false}
+                animate={{
+                  width: active ? 14 : 0,
+                  opacity: active ? 1 : 0,
+                }}
+                transition={spring}
+                className="inline-flex overflow-hidden"
+              >
+                <Check className="h-3.5 w-3.5 flex-shrink-0" />
+              </motion.span>
               {p}
             </motion.button>
           );

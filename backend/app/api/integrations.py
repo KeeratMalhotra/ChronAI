@@ -214,7 +214,8 @@ async def oauth_callback(code: str = Query(...), state: str = Query(...)):
 
     tokens = response.json()
 
-    # Store tokens and scopes in Firestore
+    # Store tokens and scopes in Firestore using the same full-dict approach
+    # as disconnect to ensure reconnection fully overwrites the disconnected state.
     db = get_db()
     user_ref = db.collection("users").document(user_id)
 
@@ -228,10 +229,14 @@ async def oauth_callback(code: str = Query(...), state: str = Query(...)):
         "explicitly_disconnected": False,
     }
 
-    await user_ref.set(
-        {f"connected_services.{service}": service_data},
-        merge=True,
-    )
+    doc = await user_ref.get()
+    if doc.exists:
+        data = doc.to_dict() or {}
+        connected_services = data.get("connected_services", {})
+    else:
+        connected_services = {}
+    connected_services[service] = service_data
+    await user_ref.set({"connected_services": connected_services}, merge=True)
 
     # Return a small HTML page that notifies the parent window and closes the popup
     from fastapi.responses import HTMLResponse

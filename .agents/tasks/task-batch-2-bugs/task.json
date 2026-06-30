@@ -1,0 +1,7 @@
+{
+  "task_id": "task-batch-2-bugs",
+  "task_description": "Fix multiple UX bugs (onboarding flash, priority button layout, profile picture sync, voice mode, service reconnection) and create a Google Slides MCP server to replace the direct API approach, plus make the AI orchestrator aware of integration status",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
