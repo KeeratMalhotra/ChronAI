@@ -9,6 +9,6 @@
     "tests": "pass",
     "test_quality": "pass",
     "docker_build": "skipped",
-    "summary": "Frontend lint passes with no errors. Frontend tests: 2 pre-existing failures on main branch (Sidebar.test.tsx and ChatExperience.test.tsx reference outdated UI patterns). All backend Python files compile successfully. Review findings addressed (postMessage origin restriction, middleware cookie optimization)."
+    "summary": "Frontend lint passes with no errors. Frontend tests: 2 pre-existing failures on main branch (Sidebar.test.tsx and ChatExperience.test.tsx reference outdated UI patterns). All backend Python files compile successfully. Review findings addressed (postMessage origin restriction, middleware cookie optimization). Additional fixes: AI suggestion delay (2-4s) added for smoother UX, onboarding UI redesigned with Haven warm pixel-art theme."
   }
 }
