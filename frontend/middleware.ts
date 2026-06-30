@@ -50,10 +50,23 @@ export async function middleware(request: NextRequest) {
   if (token) {
     const accessToken = (token as Record<string, unknown>).accessToken as string | undefined;
 
+    // Resolve the backend URL for the server-side fetch. On the deployed
+    // frontend, localhost:8000 does not exist inside the container, so derive
+    // the public backend URL from NEXT_PUBLIC_WS_URL (wss://.../ws -> https://...)
+    // the same way lib/api.ts getApiBase() does.
+    const resolveApiUrl = (): string => {
+      if (process.env.BACKEND_INTERNAL_URL) return process.env.BACKEND_INTERNAL_URL.replace(/\/$/, "");
+      if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
+      const ws = process.env.NEXT_PUBLIC_WS_URL;
+      if (ws) {
+        return ws.replace(/^ws/, "http").replace(/\/ws\/?$/, "").replace(/\/$/, "");
+      }
+      return "http://localhost:8000";
+    };
+
     if (accessToken && pathname.startsWith("/dashboard")) {
       try {
-        // Use internal API URL for server-side fetch (not NEXT_PUBLIC_ which is client-side)
-        const apiUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const apiUrl = resolveApiUrl();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
 
@@ -102,7 +115,7 @@ export async function middleware(request: NextRequest) {
     // If user is on /onboarding but has the cookie (already completed), send to dashboard
     if (accessToken && pathname.startsWith("/onboarding")) {
       try {
-        const apiUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const apiUrl = resolveApiUrl();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2000);
 
