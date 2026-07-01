@@ -238,6 +238,22 @@ async def oauth_callback(code: str = Query(...), state: str = Query(...)):
     connected_services[service] = service_data
     await user_ref.set({"connected_services": connected_services}, merge=True)
 
+    # When a user connects Gmail, send a one-time warm welcome email using the
+    # freshly granted tokens. Best-effort only: a failure here must never break
+    # the OAuth callback. Only gmail triggers this (not calendar/tasks/slides).
+    # NOTE: reconnecting Gmail may send the welcome again — acceptable for now.
+    if service == "gmail":
+        try:
+            from app.utils.email_notifications import send_welcome_email
+
+            user_email = ""
+            if doc.exists:
+                user_email = (doc.to_dict() or {}).get("email", "")
+            if user_email and service_data.get("access_token"):
+                await send_welcome_email(user_email, service_data)
+        except Exception as e:
+            logger.warning(f"Welcome email (gmail connect) failed for {user_id}: {e}")
+
     # Return a small HTML page that notifies the parent window and closes the popup
     from fastapi.responses import HTMLResponse
     html_content = f"""<!DOCTYPE html>

@@ -99,6 +99,64 @@ def _clean_text_for_speech(text: str) -> str:
         return text
 
 
+# Google Cloud TTS rejects input larger than 5000 bytes. We cap a little under
+# that so a long reply is still spoken (trimmed) instead of failing to silence.
+_TTS_MAX_BYTES = 4800
+
+
+def _truncate_for_speech(text: str, max_bytes: int = _TTS_MAX_BYTES) -> str:
+    """Trim speech text to a safe size for Google Cloud TTS.
+
+    Google Cloud TTS rejects inputs over ~5000 bytes; when that happens the
+    synthesis call fails and the reply goes completely silent. To keep a long
+    reply audible we trim it to the nearest sentence boundary under ``max_bytes``
+    (preferring to end on '.', '!' or '?', else a word boundary). Best-effort:
+    on any error the original text is returned unchanged.
+
+    Args:
+        text: The cleaned speech text.
+        max_bytes: Maximum UTF-8 byte size to allow (default just under the
+            5000-byte TTS limit).
+
+    Returns:
+        The original text if it already fits, otherwise a trimmed version that
+        ends on a natural boundary.
+    """
+    try:
+        if not text:
+            return text
+        if len(text.encode("utf-8")) <= max_bytes:
+            return text
+
+        # Trim to a byte budget without splitting a multi-byte character.
+        truncated = text.encode("utf-8")[:max_bytes].decode("utf-8", "ignore")
+
+        # Prefer to end on the last sentence terminator within the budget.
+        best_end = -1
+        for terminator in (". ", "! ", "? ", ".", "!", "?", "\n"):
+            idx = truncated.rfind(terminator)
+            if idx != -1:
+                # Include the terminator character itself.
+                end = idx + len(terminator.rstrip())
+                best_end = max(best_end, end)
+
+        if best_end > 0:
+            trimmed = truncated[:best_end].strip()
+        else:
+            # No sentence boundary; fall back to the last word boundary.
+            space_idx = truncated.rfind(" ")
+            trimmed = (truncated[:space_idx] if space_idx > 0 else truncated).strip()
+
+        logger.info(
+            "Voice reply exceeded TTS limit (%d bytes); truncated to %d bytes for speech.",
+            len(text.encode("utf-8")),
+            len(trimmed.encode("utf-8")),
+        )
+        return trimmed or truncated
+    except Exception:
+        return text
+
+
 def _make_status_callback(websocket: WebSocket):
     """Build an async status callback bound to a WebSocket connection.
 
@@ -427,6 +485,7 @@ async def websocket_chat(websocket: WebSocket):
                         voice_agent = AgentRegistry.get("voice")
                         if voice_agent:
                             speech_text = _clean_text_for_speech(result["content"])
+                            speech_text = _truncate_for_speech(speech_text)
                             audio_result = await voice_agent.execute(
                                 {"message": speech_text}
                             )

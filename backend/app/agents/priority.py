@@ -40,11 +40,13 @@ Return a JSON object with:
     {
       "title": "task or event title",
       "urgency": "high" | "medium" | "low",
-      "reason": "brief explanation of why this ranks here",
+      "reason": "a SHORT phrase (~6-12 words), e.g. 'interview prep, due Jul 5' — NOT a full sentence or paragraph",
+      "stale": true | false,
+      "group": "optional short label shared by related stale items, e.g. 'Stale — from Jun 12, overdue'",
       "time_estimate": "optional time estimate if known"
     }
   ],
-  "summary": "A natural language summary like: Here's what matters most right now:"
+  "summary": "A 1-2 sentence natural summary of what matters most right now"
 }
 
 Rules:
@@ -53,6 +55,16 @@ Rules:
 - Use "high" for items due within hours or critical deadlines
 - Use "medium" for items due within 1-2 days or moderately important
 - Use "low" for items with no pressing deadline or low impact
+- CONCISENESS IS CRITICAL. Each "reason" MUST be a short phrase (~6-12 words),
+  never a multi-sentence justification. Do NOT repeat the same reasoning across
+  items.
+- Mark clearly overdue / stale / low-relevance items with "stale": true. These
+  are typically old tasks well past their deadline or with no ongoing value.
+- For stale items that share a common story (e.g. all overdue from the same old
+  date), give them the SAME short "group" label (e.g. "Stale — from Jun 12,
+  overdue"). The client groups these under one heading with a single shared
+  explanation and one bulk-action suggestion, so keep their reasons minimal.
+- Non-stale items should have "stale": false and no "group" (or an empty group).
 - If no tasks/events exist, return an encouraging empty-state message
 """
 
@@ -184,9 +196,37 @@ Rank these items by urgency x importance."""
             "summary": "Here's what matters most right now:",
         }
 
+    # Emoji indicators kept intentionally minimal (red = act now, green = clear out).
+    _RED = "\U0001f534"     # red circle - high priority
+    _YELLOW = "\U0001f7e1"  # yellow circle - medium priority
+    _GREEN = "\U0001f7e2"   # green circle - stale / low priority
+
     @staticmethod
-    def _format_priorities(priorities: dict) -> str:
-        """Format priorities into a readable string with emoji indicators."""
+    def _is_stale(item: dict) -> bool:
+        """A priority item counts as 'stale' when explicitly flagged or low urgency.
+
+        Low-urgency and clearly-overdue items are grouped together in the
+        human-readable output instead of each getting its own paragraph.
+        """
+        if item.get("stale") is True:
+            return True
+        return str(item.get("urgency", "")).lower() == "low"
+
+    @classmethod
+    def _format_priorities(cls, priorities: dict) -> str:
+        """Render priorities as a tight, grouped, human-readable message.
+
+        Layout:
+          - A 1-2 sentence summary of what matters most.
+          - Active items (high/medium) as SHORT one-line entries with a concise
+            phrase reason and a color indicator.
+          - Stale / low-relevance items GROUPED under a shared heading, listing
+            their names on one line with a single shared explanation and one
+            bulk-action suggestion (no repeated per-item justifications).
+
+        The structured ``priorities`` list in the API response is left intact;
+        only this rendered ``content`` string is made concise.
+        """
         items = priorities.get("priorities", [])
         summary = priorities.get(
             "summary", "Here's what matters most right now:"
@@ -195,20 +235,56 @@ Rank these items by urgency x importance."""
         if not items:
             return "You're all clear! No pressing tasks or events right now. Enjoy the focus time."
 
-        urgency_emoji = {
-            "high": "\U0001f534",    # red circle
-            "medium": "\U0001f7e1",  # yellow circle
-            "low": "\U0001f7e2",     # green circle
-        }
+        active_items: list[dict] = []
+        # Preserve grouping order while collecting stale items per group label.
+        stale_groups: "dict[str, list[dict]]" = {}
+        stale_order: list[str] = []
+
+        for item in items:
+            if cls._is_stale(item):
+                label = (item.get("group") or "").strip() or "Stale / low priority"
+                if label not in stale_groups:
+                    stale_groups[label] = []
+                    stale_order.append(label)
+                stale_groups[label].append(item)
+            else:
+                active_items.append(item)
 
         lines = [summary]
-        for i, item in enumerate(items, 1):
-            emoji = urgency_emoji.get(item.get("urgency", "medium"), "\U0001f7e1")
+
+        # Active (act-now) items: one concise line each.
+        for item in active_items:
+            urgency = str(item.get("urgency", "medium")).lower()
+            emoji = cls._RED if urgency == "high" else cls._YELLOW
             title = item.get("title", "Untitled")
-            reason = item.get("reason", "")
-            line = f"{i}. {emoji} {title}"
+            reason = (item.get("reason") or "").strip()
+            line = f"{emoji} {title}"
             if reason:
-                line += f" ({reason})"
+                line += f" \u2014 {reason}"
             lines.append(line)
+
+        # Stale / low-priority items: grouped, one line of names + one shared note.
+        for label in stale_order:
+            group_items = stale_groups[label]
+            titles = [gi.get("title", "Untitled") for gi in group_items]
+            names = ", ".join(titles)
+
+            # One shared explanation for the whole group (first non-empty reason,
+            # else a sensible default) — never repeated per item.
+            shared_reason = ""
+            for gi in group_items:
+                r = (gi.get("reason") or "").strip()
+                if r:
+                    shared_reason = r
+                    break
+            if not shared_reason:
+                shared_reason = "no recent activity or long overdue"
+
+            lines.append("")
+            lines.append(f"{cls._GREEN} {label} ({len(group_items)})")
+            lines.append(f"{names} \u2014 {shared_reason}.")
+            lines.append(
+                "These look stale — consider bulk-completing or deleting them to clear the noise."
+            )
 
         return "\n".join(lines)

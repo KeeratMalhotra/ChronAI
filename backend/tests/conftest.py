@@ -42,8 +42,11 @@ class MockDocumentReference:
         data = self._store.get(self.id)
         return MockDocumentSnapshot(self.id, data)
 
-    async def set(self, data: dict) -> None:
-        self._store[self.id] = dict(data)
+    async def set(self, data: dict, merge: bool = False) -> None:
+        if merge and self.id in self._store and isinstance(self._store[self.id], dict):
+            self._store[self.id].update(dict(data))
+        else:
+            self._store[self.id] = dict(data)
 
     async def update(self, data: dict) -> None:
         if self.id in self._store:

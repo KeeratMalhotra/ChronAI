@@ -19,7 +19,13 @@ from app.config import settings
 from app.db.firestore import get_db
 from app.db.repositories import UserRepository, TaskRepository, ReminderStateRepository
 from app.scheduler.nudge_engine import classify_urgency, generate_nudge, _format_time_remaining
-from app.utils.email_notifications import send_task_reminder, send_daily_digest, send_weekly_review
+from app.utils.email_notifications import (
+    send_task_reminder,
+    send_daily_digest,
+    send_weekly_review,
+    LOGO_CID,
+    _build_logo_mime,
+)
 from app.ws_manager import ConnectionManager
 
 from google.oauth2.credentials import Credentials
@@ -132,7 +138,10 @@ async def _send_nudge_email(user_email: str, nudge_message: str, task_title: str
 <body>
   <div class="container">
     <div class="card">
-      <div class="logo">Haven</div>
+      <div class="logo">
+        <img src="cid:{LOGO_CID}" width="28" height="28" alt="Haven" style="vertical-align:middle;border-radius:6px;margin-right:8px;">
+        <span style="vertical-align:middle;">Haven</span>
+      </div>
       <div class="message">
         <p>{safe_nudge}</p>
       </div>
@@ -145,11 +154,19 @@ async def _send_nudge_email(user_email: str, nudge_message: str, task_title: str
 </body>
 </html>"""
 
-        msg = MIMEMultipart("alternative")
+        msg = MIMEMultipart("related")
         msg["to"] = user_email
         msg["subject"] = f"Haven Reminder: {task_title}"
-        msg.attach(MIMEText(nudge_message, "plain"))
-        msg.attach(MIMEText(html_body, "html"))
+
+        alternative = MIMEMultipart("alternative")
+        alternative.attach(MIMEText(nudge_message, "plain"))
+        alternative.attach(MIMEText(html_body, "html"))
+        msg.attach(alternative)
+
+        # Best-effort inline logo so it renders without loading remote images.
+        logo_image = _build_logo_mime()
+        if logo_image is not None:
+            msg.attach(logo_image)
 
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
