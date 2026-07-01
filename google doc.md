@@ -193,10 +193,9 @@ A respectful "chief of staff" engine that monitors your day and speaks up only w
 
 ### Infrastructure & DevOps
 - **Docker** — Containerized, reproducible deployments
-- **Google Cloud Run** — Serverless, auto-scaling backend hosting
+- **Google Cloud Run** — Serverless, auto-scaling hosting for both the Next.js frontend and the FastAPI backend
 - **Google Cloud Build** — Automated container build pipeline
 - **Google Artifact Registry** — Container image storage
-- **Vercel** — Global edge-network frontend hosting
 - **Git / GitHub** — Version control and CI
 
 ---
@@ -227,7 +226,7 @@ Haven is built deeply on the Google ecosystem — Google's AI and cloud services
 Haven is engineered to production standards with a security-first, fault-tolerant architecture designed to scale to millions of users without compromise.
 
 ### A Resilient, Multi-Layered Architecture
-The system is cleanly separated into three independently-scalable tiers: a globally-distributed **frontend** on Vercel's edge network, a stateless, auto-scaling **backend** on Google Cloud Run, and a managed **data layer** on Google Cloud Firestore. Because the backend is stateless, it scales horizontally and infinitely — any number of instances can spin up under load with zero shared-state contention. The multi-agent AI system is modular: each of the thirteen specialist agents operates independently, so a fault in one never cascades to the others.
+The system is cleanly separated into three independently-scalable tiers: a **frontend** served as a serverless container on Google Cloud Run, a stateless, auto-scaling **backend** also on Google Cloud Run, and a managed **data layer** on Google Cloud Firestore. Because the backend is stateless, it scales horizontally and infinitely — any number of instances can spin up under load with zero shared-state contention. The multi-agent AI system is modular: each of the thirteen specialist agents operates independently, so a fault in one never cascades to the others.
 
 ### Military-Grade Security
 - **End-to-end OAuth 2.0** with server-side token verification on **every single API request** — no endpoint is ever exposed without authentication.

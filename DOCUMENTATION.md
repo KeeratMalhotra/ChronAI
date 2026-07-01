@@ -143,7 +143,7 @@ The platform is designed around one core loop: **"Tell it your day in plain word
 | Docker | Containerized deployment |
 | Google Cloud Run | Serverless container hosting with auto-scaling |
 | Google Cloud Build | CI/CD pipeline for Docker image building |
-| Vercel | Frontend hosting with edge network |
+| Google Cloud Run (frontend) | Next.js frontend served as a serverless container (asia-south1) |
 
 ---
 
@@ -170,7 +170,7 @@ The platform is designed around one core loop: **"Tell it your day in plain word
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     FRONTEND (Vercel)                         │
+│                 FRONTEND (Google Cloud Run)                 │
 │  Next.js 15 + React 19 + TypeScript + Tailwind + Framer     │
 │  ┌─────────────┬──────────┬──────────┬─────────────────┐    │
 │  │  Dashboard  │  Tasks   │ Calendar │ Habits/Analytics │    │
@@ -254,7 +254,7 @@ cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload -
 ```
 
 ### Production
-- Frontend: Vercel (automatic deploys from main branch)
+- Frontend: Google Cloud Run (Docker container, asia-south1 region)
 - Backend: Google Cloud Run (Docker container, asia-south1 region)
 - Database: Google Cloud Firestore (native mode)
 - AI: Google Vertex AI (Gemini 2.5 Flash)
