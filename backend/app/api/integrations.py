@@ -12,7 +12,6 @@ from fastapi.responses import RedirectResponse
 
 from app.auth import verify_google_token
 from app.config import settings
-from app.db.firestore import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +215,8 @@ async def oauth_callback(code: str = Query(...), state: str = Query(...)):
 
     # Store tokens and scopes in Firestore using the same full-dict approach
     # as disconnect to ensure reconnection fully overwrites the disconnected state.
+    from app.db.firestore import get_db
+
     db = get_db()
     user_ref = db.collection("users").document(user_id)
 
@@ -241,16 +242,22 @@ async def oauth_callback(code: str = Query(...), state: str = Query(...)):
     # When a user connects Gmail, send a one-time warm welcome email using the
     # freshly granted tokens. Best-effort only: a failure here must never break
     # the OAuth callback. Only gmail triggers this (not calendar/tasks/slides).
-    # NOTE: reconnecting Gmail may send the welcome again — acceptable for now.
+    # De-duplicated via a durable ``welcome_email_sent`` flag on the user doc so
+    # reconnecting Gmail does NOT re-send the welcome. The flag is only persisted
+    # after a successful send, so a failed send can retry on a later connect.
     if service == "gmail":
         try:
             from app.utils.email_notifications import send_welcome_email
 
-            user_email = ""
-            if doc.exists:
-                user_email = (doc.to_dict() or {}).get("email", "")
-            if user_email and service_data.get("access_token"):
-                await send_welcome_email(user_email, service_data)
+            user_data = (doc.to_dict() or {}) if doc.exists else {}
+            user_email = user_data.get("email", "")
+            already_sent = bool(user_data.get("welcome_email_sent"))
+            if user_email and service_data.get("access_token") and not already_sent:
+                sent = await send_welcome_email(user_email, service_data)
+                if sent:
+                    # Persist the durable flag (merge, consistent with how
+                    # connected_services is saved) so future reconnects skip it.
+                    await user_ref.set({"welcome_email_sent": True}, merge=True)
         except Exception as e:
             logger.warning(f"Welcome email (gmail connect) failed for {user_id}: {e}")
 
@@ -294,6 +301,8 @@ async def disconnect_service(service: str, auth_token: str = Query(...)):
 
     user = await verify_google_token(auth_token)
     user_id = user.get("sub", "")
+
+    from app.db.firestore import get_db
 
     db = get_db()
     user_ref = db.collection("users").document(user_id)
@@ -362,6 +371,8 @@ async def get_integration_status(auth_token: str = Query(...)):
         pass
 
     # Check Firestore for incrementally connected services
+    from app.db.firestore import get_db
+
     db = get_db()
     user_ref = db.collection("users").document(user_id)
     doc = await user_ref.get()
@@ -479,6 +490,8 @@ async def spotify_callback(code: str = Query(...), state: str = Query(...)):
     tokens = response.json()
 
     # Store Spotify tokens in Firestore
+    from app.db.firestore import get_db
+
     db = get_db()
     user_ref = db.collection("users").document(user_id)
 
@@ -508,6 +521,8 @@ async def spotify_disconnect(auth_token: str = Query(...)):
     """
     user = await verify_google_token(auth_token)
     user_id = user.get("sub", "")
+
+    from app.db.firestore import get_db
 
     db = get_db()
     user_ref = db.collection("users").document(user_id)

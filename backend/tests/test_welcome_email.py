@@ -177,3 +177,100 @@ async def test_oauth_callback_welcome_failure_does_not_break(app_client, mock_fi
 
     # Callback still succeeds despite the welcome-email failure.
     assert res.status_code == 200
+
+
+
+# ---------------------------------------------------------------------------
+# Welcome-email dedup (welcome_email_sent flag) tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_oauth_callback_persists_welcome_flag_on_first_connect(
+    app_client, mock_firestore_db
+):
+    """First gmail connect sends the welcome AND persists welcome_email_sent."""
+    await mock_firestore_db.collection("users").document("user123").set(
+        {"email": "user@example.com", "connected_services": {}}
+    )
+
+    cm = _token_exchange_client()
+    with patch("app.api.integrations._verify_state", return_value=("user123", "gmail")), \
+         patch("app.api.integrations.httpx.AsyncClient", cm), \
+         patch(
+             "app.utils.email_notifications.send_welcome_email",
+             new_callable=AsyncMock,
+         ) as welcome:
+        welcome.return_value = True
+        res = await app_client.get(
+            "/api/integrations/callback",
+            params={"code": "authcode", "state": "ignored"},
+        )
+
+    assert res.status_code == 200
+    welcome.assert_awaited_once()
+
+    # The durable flag is persisted on the user doc after a successful send.
+    doc = await mock_firestore_db.collection("users").document("user123").get()
+    assert doc.to_dict().get("welcome_email_sent") is True
+
+
+@pytest.mark.asyncio
+async def test_oauth_callback_no_welcome_when_flag_already_set(
+    app_client, mock_firestore_db
+):
+    """Reconnecting Gmail must NOT re-send the welcome when the flag is set."""
+    await mock_firestore_db.collection("users").document("user123").set(
+        {
+            "email": "user@example.com",
+            "connected_services": {},
+            "welcome_email_sent": True,
+        }
+    )
+
+    cm = _token_exchange_client()
+    with patch("app.api.integrations._verify_state", return_value=("user123", "gmail")), \
+         patch("app.api.integrations.httpx.AsyncClient", cm), \
+         patch(
+             "app.utils.email_notifications.send_welcome_email",
+             new_callable=AsyncMock,
+         ) as welcome:
+        welcome.return_value = True
+        res = await app_client.get(
+            "/api/integrations/callback",
+            params={"code": "authcode", "state": "ignored"},
+        )
+
+    assert res.status_code == 200
+    welcome.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_oauth_callback_flag_not_persisted_when_send_fails(
+    app_client, mock_firestore_db
+):
+    """A failed send must NOT persist the flag, so a later connect can retry."""
+    await mock_firestore_db.collection("users").document("user123").set(
+        {"email": "user@example.com", "connected_services": {}}
+    )
+
+    cm = _token_exchange_client()
+    with patch("app.api.integrations._verify_state", return_value=("user123", "gmail")), \
+         patch("app.api.integrations.httpx.AsyncClient", cm), \
+         patch(
+             "app.utils.email_notifications.send_welcome_email",
+             new_callable=AsyncMock,
+         ) as welcome:
+        # Simulate a soft failure (returns False rather than raising).
+        welcome.return_value = False
+        res = await app_client.get(
+            "/api/integrations/callback",
+            params={"code": "authcode", "state": "ignored"},
+        )
+
+    assert res.status_code == 200
+    welcome.assert_awaited_once()
+
+    # Flag must remain unset so the welcome can be retried on a later connect.
+    doc = await mock_firestore_db.collection("users").document("user123").get()
+    assert doc.to_dict().get("welcome_email_sent") is not True

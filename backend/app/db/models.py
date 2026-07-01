@@ -41,6 +41,10 @@ class User(BaseModel):
         }
     )
     profile: UserProfile = Field(default_factory=UserProfile)
+    # Whether the one-time Gmail welcome email has already been sent. Guards
+    # against re-sending the welcome when the user reconnects Gmail. Existing
+    # user docs without this field default to False (not yet sent).
+    welcome_email_sent: bool = False
     # App-wide engagement streak (consecutive days the user planned/engaged).
     streak: int = 0
     longest_streak: int = 0
