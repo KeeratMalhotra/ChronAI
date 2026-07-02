@@ -40,6 +40,7 @@ import {
   fetchSuggestions,
   fetchTodayBriefing,
   checkinStreak,
+  fetchPreferences,
   type TodayBriefing,
   type StreakResult,
 } from "@/lib/api-extended";
@@ -139,6 +140,9 @@ export default function DashboardPage() {
   const user = session?.user;
 
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  // Preferred display name from onboarding/Settings (preferences.display_name);
+  // falls back to the Google account name in the greeting below.
+  const [displayName, setDisplayName] = useState("");
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [habits, setHabits] = useState<HabitItem[]>([]);
@@ -202,6 +206,19 @@ export default function DashboardPage() {
         setOnboardingChecked(true);
       });
   }, [status, accessToken, router]);
+
+  // Load the user's preferred display name (falls back to the Google name).
+  useEffect(() => {
+    if (!accessToken) return;
+    fetchPreferences(accessToken)
+      .then((data) => {
+        const dn = data?.preferences?.display_name;
+        if (dn) setDisplayName(dn);
+      })
+      .catch(() => {
+        // Non-fatal: greeting falls back to the Google account name.
+      });
+  }, [accessToken]);
 
   // Fetch dashboard data
   useEffect(() => {
@@ -342,7 +359,7 @@ export default function DashboardPage() {
     );
   }
 
-  const firstName = user?.name?.split(" ")[0] || "there";
+  const firstName = (displayName || user?.name || "").split(" ")[0] || "there";
   const todayFormatted = format(new Date(), "EEEE, MMMM d");
   const pendingTasks = tasks.filter((t) => !t.completed);
   const completedTasks = tasks.filter((t) => t.completed);

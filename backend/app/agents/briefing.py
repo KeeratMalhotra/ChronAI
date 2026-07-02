@@ -40,7 +40,7 @@ async def generate_daily_briefing(
     profile_info = ""
     user_name = ""
     if user:
-        user_name = user.name or ""
+        user_name = user.preferences.get("display_name") or user.name or ""
         if user.profile.onboarding_complete:
             p = user.profile
             profile_info = (
@@ -226,7 +226,8 @@ async def generate_today_briefing(
     work_start = 9
     work_end = 18
     if user:
-        user_name = (user.name or "").split(" ")[0] if user.name else ""
+        preferred_name = user.preferences.get("display_name") or user.name or ""
+        user_name = preferred_name.split(" ")[0] if preferred_name else ""
         if user.profile:
             priorities = user.profile.priorities or []
             work_start = user.profile.work_hours_start
