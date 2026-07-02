@@ -5,6 +5,7 @@ Provides:
   POST /api/gmail/reply - Reply to an email
 """
 
+import asyncio
 import json
 import logging
 from typing import Optional
@@ -63,16 +64,15 @@ async def scan_inbox(body: ScanInboxRequest):
             detail="Unable to identify user from token",
         )
 
-    # Fetch the Gmail-specific access token from Firestore
+    # Fetch the Gmail-specific token data from Firestore
     from app.db.firestore import get_db
 
     db = get_db()
     user_ref = db.collection("users").document(user_id)
     doc = await user_ref.get()
     data = doc.to_dict() or {} if doc.exists else {}
-    gmail_token = (
-        data.get("connected_services", {}).get("gmail", {}).get("access_token", "")
-    )
+    gmail_service_data = data.get("connected_services", {}).get("gmail", {})
+    gmail_token = gmail_service_data.get("access_token", "")
 
     if not gmail_token:
         raise HTTPException(
@@ -86,12 +86,24 @@ async def scan_inbox(body: ScanInboxRequest):
         from googleapiclient.discovery import build
         import base64
 
-        credentials = Credentials(token=gmail_token)
-        service = build("gmail", "v1", credentials=credentials)
+        # Build credentials with full token data so expired access tokens can
+        # be automatically refreshed using the stored refresh_token.
+        credentials = Credentials(
+            token=gmail_token,
+            refresh_token=gmail_service_data.get("refresh_token") or None,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=settings.GOOGLE_CLIENT_ID or None,
+            client_secret=settings.GOOGLE_CLIENT_SECRET or None,
+        )
+        # Build the service in a thread (blocking I/O - cache_discovery=False
+        # avoids a file-system cache write that can fail in some environments).
+        service = await asyncio.to_thread(
+            build, "gmail", "v1", credentials=credentials, cache_discovery=False
+        )
 
-        # List recent inbox messages
-        results = (
-            service.users()
+        # List recent inbox messages (blocking call - run in thread)
+        results = await asyncio.to_thread(
+            lambda: service.users()
             .messages()
             .list(userId="me", maxResults=body.max_results, labelIds=["INBOX"])
             .execute()
@@ -105,10 +117,11 @@ async def scan_inbox(body: ScanInboxRequest):
         emails_data = []
         for msg_ref in messages[:body.max_results]:
             try:
-                msg = (
-                    service.users()
+                msg_id = msg_ref["id"]
+                msg = await asyncio.to_thread(
+                    lambda mid=msg_id: service.users()
                     .messages()
-                    .get(userId="me", id=msg_ref["id"], format="full")
+                    .get(userId="me", id=mid, format="full")
                     .execute()
                 )
 
@@ -260,16 +273,15 @@ async def reply_email(body: ReplyEmailRequest):
             detail="Reply body cannot be empty",
         )
 
-    # Fetch the Gmail-specific access token from Firestore
+    # Fetch the Gmail-specific token data from Firestore
     from app.db.firestore import get_db
 
     db = get_db()
     user_ref = db.collection("users").document(user_id)
     doc = await user_ref.get()
     data = doc.to_dict() or {} if doc.exists else {}
-    gmail_token = (
-        data.get("connected_services", {}).get("gmail", {}).get("access_token", "")
-    )
+    gmail_service_data = data.get("connected_services", {}).get("gmail", {})
+    gmail_token = gmail_service_data.get("access_token", "")
 
     if not gmail_token:
         raise HTTPException(
@@ -283,14 +295,25 @@ async def reply_email(body: ReplyEmailRequest):
         from email.mime.text import MIMEText
         import base64
 
-        credentials = Credentials(token=gmail_token)
-        service = build("gmail", "v1", credentials=credentials)
+        # Build credentials with full token data so expired access tokens can
+        # be automatically refreshed using the stored refresh_token.
+        credentials = Credentials(
+            token=gmail_token,
+            refresh_token=gmail_service_data.get("refresh_token") or None,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=settings.GOOGLE_CLIENT_ID or None,
+            client_secret=settings.GOOGLE_CLIENT_SECRET or None,
+        )
+        service = await asyncio.to_thread(
+            build, "gmail", "v1", credentials=credentials, cache_discovery=False
+        )
 
-        # Fetch original email to get reply-to address and thread ID
-        original = (
-            service.users()
+        # Fetch original email to get reply-to address and thread ID (blocking)
+        email_id = body.email_id
+        original = await asyncio.to_thread(
+            lambda: service.users()
             .messages()
-            .get(userId="me", id=body.email_id, format="metadata",
+            .get(userId="me", id=email_id, format="metadata",
                  metadataHeaders=["Subject", "From", "Message-ID"])
             .execute()
         )
@@ -316,8 +339,8 @@ async def reply_email(body: ReplyEmailRequest):
         if thread_id:
             send_body["threadId"] = thread_id
 
-        sent = (
-            service.users()
+        sent = await asyncio.to_thread(
+            lambda: service.users()
             .messages()
             .send(userId="me", body=send_body)
             .execute()
