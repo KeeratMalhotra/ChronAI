@@ -24,7 +24,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { postOnboarding } from "@/lib/api";
-import { parseBraindump, type BrainDumpResult } from "@/lib/api-extended";
+import { parseBraindump, updateProfile, type BrainDumpResult } from "@/lib/api-extended";
 import { startListening } from "@/lib/voice";
 import { Confetti } from "@/components/ui/Confetti";
 
@@ -224,7 +224,18 @@ export default function OnboardingPage() {
       goals: [],
       onboarding_complete: true,
     });
-  }, [accessToken, role, occupation, workStart, workEnd, priorities]);
+    // Persist the name the user actually typed so greetings use it instead of
+    // the Google account name. Reuses the same store as Settings
+    // (preferences.display_name). Best-effort; never block onboarding.
+    const trimmedName = (name || "").trim();
+    if (trimmedName) {
+      try {
+        await updateProfile(accessToken, { name: trimmedName });
+      } catch {
+        // non-blocking
+      }
+    }
+  }, [accessToken, role, occupation, workStart, workEnd, priorities, name]);
 
   // Brain-dump -> save profile -> parse -> reveal.
   const handlePlanWeek = useCallback(async () => {
